@@ -1,0 +1,64 @@
+---
+title: "contextual_data_boxplots"
+output: html_notebook
+---
+
+```{r}
+setwd("~/Desktop/msc/ms_mgg/src/contextual_data/")
+library(tidyverse)
+library(reshape2)
+library(ggplot2)
+```
+
+```{r}
+contextual_data <- read_tsv("~/Desktop/msc/contextualdata/sample_data/compiled_metadata.txt", col_names = TRUE)
+```
+
+
+```{r}
+Samples_unsequenced <- bind_rows(read_tsv("~/Desktop/msc/contextualdata/sample_data/GOS_samples_unsequenced.txt", col_names = TRUE),
+read_tsv("~/Desktop/msc/contextualdata/sample_data/TARA_samples_unsequenced.txt", col_names = TRUE))
+
+contextual_data_edited <- mutate(contextual_data, Sequenced = ifelse(contextual_data$Sample %in% Samples_unsequenced$label, "no", "yes")) %>%
+  filter(Sequenced == "yes")
+
+contextual_data_edited_temp_sal <- contextual_data_edited[c(1,2,5,6)]
+
+contextual_data_edited_melted <- melt(contextual_data_edited_temp_sal, id = c("Project", "Sample"))
+
+contextual_data_edited_melted_sal <- contextual_data_edited_melted %>%
+    filter(variable == "Salinity_psu")
+
+contextual_data_edited_melted_temp <- contextual_data_edited_melted %>%
+    filter(variable == "Temperature_C")
+
+```
+
+```{r}
+ggplot(data = contextual_data_edited_melted_sal, aes(x = Project, y = value, fill = Project)) +
+    geom_boxplot(outlier.colour = "white", alpha = 0.8) +
+    scale_fill_manual(values = c("#324F5D", "#78BF7C", "#E56951", "#9F2E46")) +
+    geom_jitter(alpha = 0.5, color = "gray20") +
+    theme_bw() +
+    xlab("") +
+    ylab("Salinity (psu)")
+```
+
+```{r}
+contextual_data_edited_melted_sal_nona <- contextual_data_edited_melted_sal %>% 
+  filter(!is.na(contextual_data_edited_melted_sal$value))
+
+max(contextual_data_edited_melted_sal_nona$value)
+```
+
+
+```{r}
+ggplot(data = contextual_data_edited_melted_temp, aes(x = Project, y = value, fill = Project)) +
+    geom_boxplot(outlier.colour = "white", alpha = 0.8) +
+    scale_fill_manual(values = c("#324F5D", "#78BF7C", "#E56951", "#9F2E46")) +
+    geom_jitter(alpha = 0.5, color = "gray20") +
+    theme_bw() +
+    xlab("") +
+    ylab("Temperature (ºC)")
+```
+
