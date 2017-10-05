@@ -61,4 +61,3 @@ ggplot(data = contextual_data_edited_melted_temp, aes(x = Project, y = value, fi
     xlab("") +
     ylab("Temperature (ºC)")
 ```
-
