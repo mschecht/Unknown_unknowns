@@ -1,4 +1,4 @@
-This is a PhD thesis latex template sometimes used at MPI-MM
+This is the latex template used for this Master thesis.
 
 To compile the document:
 
@@ -7,4 +7,4 @@ make clean
 make latex
 ```
 
-The compiled document is found in **main.pdf**
+The compiled document is found in **msc_mschecht_20180314.pdf**
