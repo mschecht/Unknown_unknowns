@@ -1,0 +1,473 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Masters/Doctoral Thesis
+% LaTeX Template
+% Version 1.41 (9/9/13)
+%
+% This template has been downloaded from:
+% http://www.latextemplates.com
+%
+% Original authors:
+% Steven Gunn
+% http://users.ecs.soton.ac.uk/srg/softwaretools/document/templates/
+% and
+% Sunil Patel
+% http://www.sunilpatel.co.uk/thesis-template/
+%
+% License:
+% CC BY-NC-SA 3.0 (http://creativecommons.org/licenses/by-nc-sa/3.0/)
+%
+% Note:
+% Make sure to edit document variables in the Thesis.cls file
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%----------------------------------------------------------------------------------------
+%	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
+%----------------------------------------------------------------------------------------
+
+%\documentclass[11pt, twoside]{Thesis} % Paper size, default font size and two-sided paper
+
+\documentclass[10 pt, a4paper, twoside, openright]{Thesis}
+%\special{papersize=297mm,210mm}% it is A4 paper size, I got from Wikipedia.
+\special{papersize=240mm,170mm}% it is the weird format of MPI thesis
+\usepackage{blindtext}
+\usepackage{titlesec}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{textcomp}
+\usepackage{tabularx}
+\usepackage{tabu}
+\usepackage{pdfx}
+\usepackage{booktabs}
+\usepackage{setspace}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{bm}
+\usepackage{afterpage}
+\usepackage{longtable}
+\usepackage{lscape}
+%\usepackage{cite}
+\usepackage{chngcntr}
+\usepackage{url}
+\urlstyle{same}
+%\usepackage{fontspec}
+%\newcommand{\TextUnderscore}{\rule{.2em}{.1pt}}
+\DeclareGraphicsRule{.ai}{pdf}{.ai}{}
+\DeclareGraphicsExtensions{.pdf,.png,.jpg,.ai,.eps}
+\graphicspath{{Figures/}}
+\usepackage[dvipsnames]{xcolor}
+%\usepackage[sectionbib]{chapterbib}
+\usepackage{textgreek}
+\usepackage{float}
+\usepackage{chemformula}
+\usepackage{textcomp}
+\usepackage{acronym}
+\usepackage{wasysym}
+\usepackage[english]{babel}
+\usepackage[comma, sort&compress]{natbib} % Use the natbib reference package - read up on this to edit the reference style; if you want text (e.g. Smith et al., 2012) for the in-text references (instead of numbers), remove 'numbers'
+\usepackage{caption}
+\usepackage{pdfpages}
+\usepackage{gensymb}
+\usepackage{graphicx}
+%\DeclareCaptionLabelFormat{myformat}{#1 #2}
+%\captionsetup{within=none,labelformat=myformat}
+\hypersetup{urlcolor=black, colorlinks=true} % Colors hyperlinks in blue - change to black if annoying
+\title{\ttitle} % Defines the thesis title - don't touch this
+%\usepackage[hmarginratio=2:3]{geometry}
+\usepackage[titletoc]{appendix}
+
+\titleformat{\chapter}[display]
+  {\normalfont\bfseries}{}{0pt}{\Huge}
+
+\newcommand{\beginsupplement}{%
+        \setcounter{table}{0}
+        \renewcommand{\thetable}{S\arabic{chapter}.\arabic{table}}%
+        \setcounter{figure}{0}
+        \renewcommand{\thefigure}{S\arabic{chapter}.\arabic{figure}}%
+     }
+\newcommand{\nosupplement}{%
+        \setcounter{table}{0}
+        \renewcommand{\thetable}{\arabic{chapter}.\arabic{table}}%
+        \setcounter{figure}{0}
+        \renewcommand{\thefigure}{\arabic{chapter}.\arabic{figure}}%
+        }
+
+\newcommand{\quotes}[1]{``#1"}
+
+\begin{document}
+
+\selectlanguage{english}
+\sloppy
+\frontmatter % Use roman page numbering style (i, ii, iii, iv...) for the pre-content pages
+
+\setstretch{1.3} % Line spacing of 1.3
+
+%try default
+%\fancyhead[LE,RO]{\slshape \rightmark}
+%\fancyhead[LO,RE]{\slshape \leftmark}
+%\fancyfoot[C]{\thepage}
+%\headrulewidth 0.4pt
+%\footrulewidth 0 pt
+
+
+
+% Define the page headers using the FancyHdr package and set up for one-sided printing
+%\fancyhead{} % Clears all page headers and footers
+%\usepackage{fancyhdr}
+%\pagestyle{fancy}
+%\fancyhead[RO,LE]{\thepage}
+%\fancyhead[LE,RO]{\thepage}
+%\rhead{\thepage} % Sets the right side header to show the page number
+%\lhead{} % Clears the left side page header
+
+%\pagestyle{fancy} % Finally, use the "fancy" page style to implement the FancyHdr headers
+
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}} % New command to make the lines in the title page
+
+% PDF meta-data
+%\hypersetup{pdftitle={\ttitle}}
+%\hypersetup{pdfsubject=\subjectname}
+%\hypersetup{pdfauthor=\authornames}
+%\hypersetup{pdfkeywords=\keywordnames}
+
+%----------------------------------------------------------------------------------------
+%	TITLE PAGE
+%----------------------------------------------------------------------------------------
+
+\begin{titlepage}
+
+\begin{figure}
+\hspace{-3.0cm}
+\subfigure{\
+\raggedright
+\includegraphics[width=.4\textwidth]{Figures/MPI_logo.jpg}}
+\hspace{6.5cm}
+\subfigure{
+\raggedleft
+\includegraphics[width=.4\textwidth]{Figures/Unibremen_logo.png}}
+\end{figure}
+
+
+
+%\includegraphics[width = 40mm]{logo.jpg}
+
+
+\begin{center}
+
+
+%\vspace{2cm}
+
+%\large Dissertation
+\vspace*{2cm}
+
+
+
+\large{\textbf{Master of Science Thesis:}}
+
+\vspace{1cm}
+
+%{\huge \textbf{\ttitle}\par}
+{\LARGE\textbf{Ecological implications and characterization \\
+ of genes of unknown function in the marine environment}\par}
+\thispagestyle{empty}
+
+%\vspace{1.5cm}
+%The work of this thesis fulfills requirements \\%for the degree of Master of Science in Marine Microbiology \\%at the University of Bremen by Matthew S. Schechter. \\
+\vspace{1.5cm}
+University of Bremen\\
+Max Planck Institute for Marine Microbiology \\
+\large{Microbial Genomics and Bioinformatics Group} \\
+\vspace{1.5cm}
+
+\textbf{Matthew S. Schechter}
+\vspace{2cm}
+\vfill
+{\large{March, 15, 2018}}\\[4cm] % Date
+
+%\textsc{\LARGE \univname}\\[1.5cm] % University name
+%\textsc{\Large Doctoral Thesis}\\[0.5cm] % Thesis type
+
+
+%\HRule % Horizontal line
+
+%{\huge \textbf{\ttitle}\par}% Thesis title
+
+%\HRule % Horizontal line
+
+%\begin{minipage}{0.4\textwidth}
+%\begin{flushleft} \large
+%\emph{Author:}\\
+
+%\end{flushleft}
+%\end{minipage}
+%\begin{minipage}{0.4\textwidth}
+%\begin{flushright} \large
+%\emph{Supervisor:} \\
+
+%\end{flushright}
+%\end{minipage}\\[3cm]
+
+%\vspace{2cm}
+
+%\large Dissertation
+
+%~\\zur Erlangung des Doktorgrades
+%~\\der Naturwissenschaften
+%~\\- Dr. rer. nat. - \\[0.3cm] % University requirement text
+%\vspace{3cm}
+%dem Fachbereich Biologie/Chemie
+%~\\der Universit\"at Bremen
+%~\\vorgelegt von
+
+%\vspace{2.5cm}
+
+%\vfill
+\end{center}
+
+\end{titlepage}
+
+\newpage
+\pagestyle{empty}
+
+
+\begin{minipage}{0.3\textwidth}
+\end{minipage} \hfill
+\begin{minipage}{0.7\textwidth}
+The work of this thesis fulfills requirements \\for the degree of Master of Science in Marine Microbiology \\at the University of Bremen by Matthew S. Schechter. \\
+\end{minipage}
+
+
+\null{}
+\vfill{}
+
+First evaluator: Prof. Dr. Frank Oliver Gl\"{o}ckner \\
+Second evaluator: Dr. Pier Luigi Buttigieg \\
+Supervisor: Dr. Antonio Fern\'{a}ndez-Guerra \\
+
+
+
+%----------------------------------------------------------------------------------------
+%	DECLARATION PAGE
+%	Your institution may give you a different text to place here
+%----------------------------------------------------------------------------------------
+
+%\Declaration{
+
+%\addtocontents{toc}{\vspace{1em}} % Add a gap in the Contents, for aesthetics
+
+%I, \authornames, declare that this thesis titled, '\ttitle' and the work presented in it are my own. I confirm that:
+
+%\begin{itemize}
+%\item[\tiny{$\blacksquare$}] This work was done wholly or mainly while in candidature for a research degree at this University.
+%\item[\tiny{$\blacksquare$}] Where any part of this thesis has previously been submitted for a degree or any other qualification at this University or any other institution, this has been clearly stated.
+%\item[\tiny{$\blacksquare$}] Where I have consulted the published work of others, this is always clearly attributed.
+%\item[\tiny{$\blacksquare$}] Where I have quoted from the work of others, the source is always given. With the exception of such quotations, this thesis is entirely my own work.
+%%\item[\tiny{$\blacksquare$}] I have acknowledged all main sources of help.
+%\item[\tiny{$\blacksquare$}] Where the thesis is based on work done by myself jointly with others, I have made clear exactly what was done by others and what I have contributed myself.\\
+%\end{itemize}
+
+%Signed:\\
+%\rule[1em]{25em}{0.5pt} % This prints a line for the signature
+
+%Date:\\
+%\rule[1em]{25em}{0.5pt} % This prints a line to write the date
+%}
+
+\clearpage % Start a new page
+
+%----------------------------------------------------------------------------------------
+%	QUOTATION PAGE
+%----------------------------------------------------------------------------------------
+
+%\pagestyle{empty} % No headers or footers for the following pages
+
+%\null\vfill\vfill\vfill\vfill % Add some space to move the quote down the page a bit
+
+
+%\begin{flushright}
+%Dedication goes here
+%\end{flushright}
+
+%\vfill\vfill\vfill\vfill\vfill\vfill\null{} % Add some space at the bottom to position the quote just right
+
+%\clearpage % Start a new page
+
+%\pagestyle{empty} % No headers or footers for the following pages
+
+%\null\vfill % Add some space to move the quote down the page a bit
+
+%\vfill\vfill\vfill\vfill\vfill\vfill\null{} % Add some space at the bottom to position the quote just right
+
+%\clearpage % Start a new page
+%\cleardoublepage{}
+
+%----------------------------------------------------------------------------------------
+%	ABSTRACT PAGE
+%----------------------------------------------------------------------------------------
+
+%\addtotoc{Summary} % Add the "Abstract" page entry to the Contents
+
+%\abstract{\addtocontents{toc}{\vspace{1em}} % Add a gap in the Contents, for aesthetics
+
+
+
+\clearpage % Start a new page
+
+%----------------------------------------------------------------------------------------
+%	ACKNOWLEDGEMENTS
+%----------------------------------------------------------------------------------------
+
+%\setstretch{1.3} % Reset the line-spacing to 1.3 for body text (if it has changed)
+
+%\acknowledgements{\addtocontents{toc}{\vspace{1em}} % Add a gap in the Contents, for aesthetics
+
+%The acknowledgements and the people to thank go here, don't forget to include your project advisor\ldots
+%}
+%\clearpage % Start a new page
+
+%----------------------------------------------------------------------------------------
+%	LIST OF CONTENTS/FIGURES/TABLES PAGES
+%----------------------------------------------------------------------------------------
+
+\pagestyle{fancy} % The page style headers have been "empty" all this time, now use the "fancy" headers as defined before to bring them back
+\include{Abstract}
+%\include{Zusammenfassung}
+%\include{Abbreviations}
+
+
+%\lhead{\emph{Table of Contents}} % Set the left side page header to "Contents"
+\tableofcontents % Write out the Table of Contents
+
+%\lhead{\emph{List of Figures}} % Set the left side page header to "List of Figures"
+\listoffigures % Write out the List of Figures
+
+%\lhead{\emph{List of Tables}} % Set the left side page header to "List of Tables"
+\listoftables % Write out the List of Tables
+
+%----------------------------------------------------------------------------------------
+%	GLOSSARY
+%----------------------------------------------------------------------------------------
+%\LARGE{\textbf{Glossary}}
+
+
+%\textbf{Clusters:} \textbf{W}hat (it) \textbf{S}tands \textbf{F}or \\
+%\textbf{Components:}  \textbf{W}hat (it) \textbf{S}tands \textbf{F}or \\
+
+
+%\newpage
+%----------------------------------------------------------------------------------------
+%	ABBREVIATIONS
+%----------------------------------------------------------------------------------------
+%\LARGE{Abbreviations}
+%
+%
+%\textbf{TP}  \textbf{W}hat (it) \textbf{S}tands \textbf{F}or \\
+%\textbf{TPS}  \textbf{W}hat (it) \textbf{S}tands \textbf{F}or \\
+%
+%\LARGE{Glossary}
+%
+%
+%\textbf{Clusters:} \textbf{W}hat (it) \textbf{S}tands \textbf{F}or \\
+%\textbf{Components:}  \textbf{W}hat (it) \textbf{S}tands \textbf{F}or \\
+
+%----------------------------------------------------------------------------------------
+%	PHYSICAL CONSTANTS/OTHER DEFINITIONS
+%----------------------------------------------------------------------------------------
+
+%\clearpage % Start a new page
+
+%\lhead{\emph{Physical Constants}} % Set the left side page header to "Physical Constants"
+
+%\listofconstants{lrcl} % Include a list of Physical Constants (a four column table)
+%{
+%Speed of Light & $c$ & $=$ & $2.997\ 924\ 58\times10^{8}\ \mbox{ms}^{-\mbox{s}}$ (exact)\\
+% Constant Name & Symbol & = & Constant Value (with units) \\
+%}
+
+%----------------------------------------------------------------------------------------
+%	SYMBOLS
+%----------------------------------------------------------------------------------------
+
+%\clearpage % Start a new page
+
+%\lhead{\emph{Symbols}} % Set the left side page header to "Symbols"
+
+%\listofnomenclature{lll} % Include a list of Symbols (a three column table)
+%{
+%$a$ & distance & m \\
+%$P$ & power & W (Js$^{-1}$) \\
+% Symbol & Name & Unit \\
+
+%& & \\ % Gap to separate the Roman symbols from the Greek
+
+%$\omega$ & angular frequency & rads$^{-1}$ \\
+% Symbol & Name & Unit \\
+%}
+
+%----------------------------------------------------------------------------------------
+%	DEDICATION
+%----------------------------------------------------------------------------------------
+
+\setstretch{1.3} % Return the line spacing back to 1.3
+
+\pagestyle{empty} % Page style needs to be empty for this page
+
+%\dedicatory{\ldots} % Dedication text
+
+%\addtocontents{toc}{\vspace{2em}} % Add a gap in the Contents, for aesthetics
+
+%----------------------------------------------------------------------------------------
+%	THESIS CONTENT - CHAPTERS
+%----------------------------------------------------------------------------------------
+
+\mainmatter{}% Begin numeric (1,2,3...) page numbering
+
+\pagestyle{fancy} % Return the page headers back to the "fancy" style
+
+% Include the chapters of the thesis as separate files from the Chapters folder
+% Uncomment the lines as you write the chapters
+\include{Chapters/Introduction}
+\include{Chapters/Methods}
+\include{Chapters/resultsanddiscussion}
+\include{Chapters/conclusionandoutlook}
+%\input{Chapters/Chapter7}
+
+%%% acknoledgegements
+
+%\input{{\acknowledgements{\addtocontents}} % Add a gap in the Contents, for aesthetics
+
+%The acknowledgements and the people to thank go here, don't forget to include your project advisor\ldots
+%}
+%\addtocontents{toc}{\vspace{2em}} % Add a gap in the Contents, for aesthetics
+%\acknowledgements % Cue to tell LaTeX that the following 'chapters' are Appendices
+\let\cleardoublepage\clearpage
+\addtocontents{toc}{\vspace{2em}} % Add a gap in the Contents, for aesthetics
+\appendix % Cue to tell LaTeX that the following 'chapters' are Appendices
+\include{Appendices/Appendix}
+% Include the appendices of the thesis as separate files from the Appendices folder
+% Uncomment the lines as you write the Appendices
+%\input{biblio}
+%\input{Appendices/Appendix}
+%\input{Appendices/AppendixB}
+%input{Appendices/AppendixC}
+
+%\addtocontents{toc}{\vspace{2em}} % Add a gap in the Contents, for aesthetics
+
+\backmatter{}
+
+
+%----------------------------------------------------------------------------------------
+%	BIBLIOGRAPHY
+%----------------------------------------------------------------------------------------
+%BIBLIOGRAPHY
+%\part{Bibliography}
+\addcontentsline{toc}{chapter}{Bibliography}
+\bibliographystyle{andreea}
+\bibliography{bib.bib}
+
+\include{acknow}
+%\include{Erklarung}
+
+
+\end{document}

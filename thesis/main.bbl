@@ -1,0 +1,677 @@
+\begin{thebibliography}{88}
+\expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
+\expandafter\ifx\csname url\endcsname\relax
+  \def\url#1{{\tt #1}}\fi
+\expandafter\ifx\csname urlprefix\endcsname\relax\def\urlprefix{URL }\fi
+\expandafter\ifx\csname selectlanguage\endcsname\relax
+  \def\selectlanguage#1{\relax}\fi
+
+\bibitem[{Altschul et~al.(1990)Altschul, Gish, Miller, Myers \&
+  Lipman}]{Altschul_1990}
+{\bf Altschul, S.~F., Gish, W., Miller, W., Myers, E.~W. \& Lipman, D.~J.}
+  (1990).
+\newblock Basic local alignment search tool.
+\newblock {\em Journal of Molecular Biology\/}, {\bf 215}(3), 403--410.
+\newblock \urlprefix\url{https://doi.org/10.1016/s0022-2836(05)80360-2}.
+
+\bibitem[{Azam \& Malfatti(2007)}]{Azam_2007}
+{\bf Azam, F. \& Malfatti, F.}  (2007).
+\newblock Microbial structuring of marine ecosystems.
+\newblock {\em Nature Reviews Microbiology\/}, {\bf 5}(10), 782--791.
+\newblock \urlprefix\url{https://doi.org/10.1038/nrmicro1747}.
+
+\bibitem[{Barer(2015)}]{Barer_2015}
+{\bf Barer, M.~R.}  (2015).
+\newblock Bacterial Growth, Culturability and Viability.
+\newblock In {\em Molecular Medical Microbiology\/}, 181--199. Elsevier.
+\newblock
+  \urlprefix\url{https://doi.org/10.1016\%2Fb978-0-12-397169-2.00010-x}.
+
+\bibitem[{Barrientos-Somarribas et~al.(2018)Barrientos-Somarribas, Messina,
+  Pou, Lysholm, Bjerkner, Allander, Andersson \&
+  Sonnhammer}]{Barrientos_Somarribas_2018}
+{\bf Barrientos-Somarribas, M., Messina, D.~N., Pou, C., Lysholm, F., Bjerkner,
+  A., Allander, T., Andersson, B. \& Sonnhammer, E. L.~L.}  (2018).
+\newblock Discovering viral genomes in human metagenomic data by predicting
+  unknown protein families.
+\newblock {\em Scientific Reports\/}, {\bf 8}(1).
+\newblock \urlprefix\url{https://doi.org/10.1038\%2Fs41598-017-18341-7}.
+
+\bibitem[{Bernard et~al.(2018)Bernard, Pathmanathan, Lannes, Lopez \&
+  Bapteste}]{Bernard_2018}
+{\bf Bernard, G., Pathmanathan, J.~S., Lannes, R., Lopez, P. \& Bapteste, E.}
+  (2018).
+\newblock Microbial Dark Matter Investigations: How Microbial Studies Transform
+  Biological Knowledge and Empirically Sketch a Logic of Scientific Discovery.
+\newblock {\em Genome Biology and Evolution\/}, {\bf 10}(3), 707--715.
+\newblock \urlprefix\url{https://doi.org/10.1093\%2Fgbe\%2Fevy031}.
+
+\bibitem[{Buchfink et~al.(2014)Buchfink, Xie \& Huson}]{Buchfink_2014}
+{\bf Buchfink, B., Xie, C. \& Huson, D.~H.}  (2014).
+\newblock Fast and sensitive protein alignment using {DIAMOND}.
+\newblock {\em Nature Methods\/}, {\bf 12}(1), 59--60.
+\newblock \urlprefix\url{https://doi.org/10.1038\%2Fnmeth.3176}.
+
+\bibitem[{Buttigieg et~al.(2018)Buttigieg, Fadeev, Bienhold, Hehemann, Offre \&
+  Boetius}]{Buttigieg_2018}
+{\bf Buttigieg, P.~L., Fadeev, E., Bienhold, C., Hehemann, L., Offre, P. \&
+  Boetius, A.}  (2018).
+\newblock Marine microbes in 4D {\textemdash} using time series observation to
+  assess the dynamics of the ocean microbiome and its links to ocean health.
+\newblock {\em Current Opinion in Microbiology\/}, {\bf 43}, 169--185.
+\newblock \urlprefix\url{https://doi.org/10.1016\%2Fj.mib.2018.01.015}.
+
+\bibitem[{Buttigieg et~al.(2013)Buttigieg, Hankeln, Kostadinov, Kottmann,
+  Yilmaz, Duhaime \& Gl{\"o}ckner}]{Buttigieg_2013}
+{\bf Buttigieg, P.~L., Hankeln, W., Kostadinov, I., Kottmann, R., Yilmaz, P.,
+  Duhaime, M.~B. \& Gl{\"o}ckner, F.~O.}  (2013).
+\newblock Ecogenomic Perspectives on Domains of Unknown Function:
+  Correlation-Based Exploration of Marine Metagenomes.
+\newblock {\em {PLoS} {ONE}\/}, {\bf 8}(3), e50869.
+\newblock \urlprefix\url{https://doi.org/10.1371\%2Fjournal.pone.0050869}.
+
+\bibitem[{Camacho et~al.(2009)Camacho, Coulouris, Avagyan, Ma, Papadopoulos,
+  Bealer \& Madden}]{Camacho_2009}
+{\bf Camacho, C., Coulouris, G., Avagyan, V., Ma, N., Papadopoulos, J., Bealer,
+  K. \& Madden, T.~L.}  (2009).
+\newblock BLAST: architecture and applications.
+\newblock {\em {BMC} Bioinformatics\/}, {\bf 10}(1), 421.
+\newblock \urlprefix\url{https://doi.org/10.1186\%2F1471-2105-10-421}.
+
+\bibitem[{Carradec et~al.(2018)Carradec, , Pelletier, Silva, Alberti
+  et~al.}]{Carradec_2018}
+{\bf Carradec, Q., , Pelletier, E., Silva, C.~D., Alberti, A. et~al.}  (2018).
+\newblock A global ocean atlas of eukaryotic genes.
+\newblock {\em Nature Communications\/}, {\bf 9}(1).
+\newblock \urlprefix\url{https://doi.org/10.1038\%2Fs41467-017-02342-1}.
+
+\bibitem[{Cavicchioli(2015)}]{Cavicchioli_2015}
+{\bf Cavicchioli, R.}  (2015).
+\newblock Microbial ecology of Antarctic aquatic systems.
+\newblock {\em Nature Reviews Microbiology\/}, {\bf 13}(11), 691--706.
+\newblock \urlprefix\url{https://doi.org/10.1038\%2Fnrmicro3549}.
+
+\bibitem[{Cordier et~al.(2017)Cordier, Esling, Lejzerowicz, Visco, Ouadahi,
+  Martins, Cedhagen \& Pawlowski}]{Cordier_2017}
+{\bf Cordier, T., Esling, P., Lejzerowicz, F., Visco, J., Ouadahi, A., Martins,
+  C., Cedhagen, T. \& Pawlowski, J.}  (2017).
+\newblock Predicting the Ecological Quality Status of Marine Environments from
+  {eDNA} Metabarcoding Data Using Supervised Machine Learning.
+\newblock {\em Environmental Science {\&} Technology\/}, {\bf 51}(16),
+  9118--9126.
+\newblock \urlprefix\url{https://doi.org/10.1021\%2Facs.est.7b01518}.
+
+\bibitem[{Crooks(2004)}]{Crooks_2004}
+{\bf Crooks, G.~E.}  (2004).
+\newblock {WebLogo}: A Sequence Logo Generator.
+\newblock {\em Genome Research\/}, {\bf 14}(6), 1188--1190.
+\newblock \urlprefix\url{https://doi.org/10.1101\%2Fgr.849004}.
+
+\bibitem[{Danczak et~al.(2017)Danczak, Johnston, Kenah, Slattery, Wrighton \&
+  Wilkins}]{Danczak_2017}
+{\bf Danczak, R.~E., Johnston, M.~D., Kenah, C., Slattery, M., Wrighton, K.~C.
+  \& Wilkins, M.~J.}  (2017).
+\newblock Members of the Candidate Phyla Radiation are functionally
+  differentiated by carbon- and nitrogen-cycling capabilities.
+\newblock {\em Microbiome\/}, {\bf 5}(1).
+\newblock \urlprefix\url{https://doi.org/10.1186\%2Fs40168-017-0331-1}.
+
+\bibitem[{Davies et~al.(2012)Davies, Field \& Network}]{Davies_2012}
+{\bf Davies, N., Field, D. \& Network, T. G.~O.}  (2012).
+\newblock A genomic network to monitor Earth.
+\newblock {\em Nature\/}, {\bf 481}(7380), 145--145.
+\newblock \urlprefix\url{https://doi.org/10.1038\%2F481145a}.
+
+\bibitem[{Delmont \& Eren(2018)}]{Delmont_2018}
+{\bf Delmont, T.~O. \& Eren, A.~M.}  (2018).
+\newblock Linking pangenomes and metagenomes: the Prochlorococcus
+  metapangenome.
+\newblock {\em {PeerJ}\/}, {\bf 6}, e4320.
+\newblock \urlprefix\url{https://doi.org/10.7717\%2Fpeerj.4320}.
+
+\bibitem[{Delmont et~al.(2017)Delmont, Quince, Shaiber, Esen, Lee, Lucker \&
+  Eren}]{Delmont_2017}
+{\bf Delmont, T.~O., Quince, C., Shaiber, A., Esen, O.~C., Lee, S. T.~M.,
+  Lucker, S. \& Eren, A.~M.}  (2017).
+\newblock Nitrogen-Fixing Populations Of Planctomycetes And Proteobacteria Are
+  Abundant In The Surface Ocean.
+\newblock {\em {PeerJ}\/}.
+\newblock \urlprefix\url{https://doi.org/10.1101\%2F129791}.
+
+\bibitem[{Deorowicz et~al.(2016)Deorowicz, Debudaj-Grabysz \&
+  Gudy{\'{s}}}]{Deorowicz_2016}
+{\bf Deorowicz, S., Debudaj-Grabysz, A. \& Gudy{\'{s}}, A.}  (2016).
+\newblock {FAMSA}: Fast and accurate multiple sequence alignment of huge
+  protein families.
+\newblock {\em Scientific Reports\/}, {\bf 6}(1).
+\newblock \urlprefix\url{https://doi.org/10.1038\%2Fsrep33964}.
+
+\bibitem[{Duarte(2015)}]{Duarte_2015}
+{\bf Duarte, C.~M.}  (2015).
+\newblock Seafaring in the 21St Century: The Malaspina 2010 Circumnavigation
+  Expedition.
+\newblock {\em Limnology and Oceanography Bulletin\/}, {\bf 24}(1), 11--14.
+\newblock \urlprefix\url{https://doi.org/10.1002\%2Flob.10008}.
+
+\bibitem[{Eberhardt et~al.(2012)Eberhardt, Haft, Punta, Martin,
+  O{\textquotesingle}Donovan \& Bateman}]{Eberhardt_2012}
+{\bf Eberhardt, R.~Y., Haft, D.~H., Punta, M., Martin, M.,
+  O{\textquotesingle}Donovan, C. \& Bateman, A.}  (2012).
+\newblock {AntiFam}: a tool to help identify spurious {ORFs} in protein
+  annotation.
+\newblock {\em Database\/}, {\bf 2012}(0), bas003--bas003.
+\newblock \urlprefix\url{https://doi.org/10.1093\%2Fdatabase\%2Fbas003}.
+
+\bibitem[{Eddy(1998)}]{Eddy_1998}
+{\bf Eddy, S.~R.}  (1998).
+\newblock Profile hidden Markov models.
+\newblock {\em Bioinformatics\/}, {\bf 14}(9), 755--763.
+\newblock
+  \urlprefix\url{https://doi.org/10.1093\%2Fbioinformatics\%2F14.9.755}.
+
+\bibitem[{Edgar(2004)}]{Edgar_2004}
+{\bf Edgar, R.~C.}  (2004).
+\newblock {MUSCLE}: multiple sequence alignment with high accuracy and high
+  throughput.
+\newblock {\em Nucleic Acids Research\/}, {\bf 32}(5), 1792--1797.
+\newblock \urlprefix\url{https://doi.org/10.1093\%2Fnar\%2Fgkh340}.
+
+\bibitem[{Edgar(2010)}]{Edgar_2010}
+{\bf Edgar, R.~C.}  (2010).
+\newblock Search and clustering orders of magnitude faster than {BLAST}.
+\newblock {\em Bioinformatics\/}, {\bf 26}(19), 2460--2461.
+\newblock \urlprefix\url{https://doi.org/10.1093\%2Fbioinformatics\%2Fbtq461}.
+
+\bibitem[{Ellens et~al.(2017)Ellens, Christian, Singh, Satagopam, May \&
+  Linster}]{Ellens_2017}
+{\bf Ellens, K.~W., Christian, N., Singh, C., Satagopam, V.~P., May, P. \&
+  Linster, C.~L.}  (2017).
+\newblock Confronting the catalytic dark matter encoded by sequenced genomes.
+\newblock {\em Nucleic Acids Research\/}, {\bf 45}(20), 11495--11514.
+\newblock \urlprefix\url{https://doi.org/10.1093\%2Fnar\%2Fgkx937}.
+
+\bibitem[{Enright et~al.(2002)Enright, Van~Dongen \& Ouzounis}]{Enright_2002}
+{\bf Enright, A.~J., Van~Dongen, S. \& Ouzounis, C.~A.}  (2002).
+\newblock {{A}n efficient algorithm for large-scale detection of protein
+  families}.
+\newblock {\em Nucleic Acids Res.\/}, {\bf 30}(7), 1575--1584.
+
+\bibitem[{Eren et~al.(2015)Eren, Esen, Quince, Vineis, Morrison, Sogin \&
+  Delmont}]{Eren_2015}
+{\bf Eren, A.~M., Esen, {\"O}.~C., Quince, C., Vineis, J.~H., Morrison, H.~G.,
+  Sogin, M.~L. \& Delmont, T.~O.}  (2015).
+\newblock Anvi'o: an advanced analysis and visualization platform for `omics
+  data.
+\newblock {\em {PeerJ}\/}, {\bf 3}, e1319.
+\newblock \urlprefix\url{https://doi.org/10.7717\%2Fpeerj.1319}.
+
+\bibitem[{Finn et~al.(2015)Finn, Coggill, Eberhardt, Eddy, Mistry, Mitchell,
+  Potter, Punta, Qureshi, Sangrador-Vegas, Salazar, Tate \&
+  Bateman}]{Finn_2015}
+{\bf Finn, R.~D., Coggill, P., Eberhardt, R.~Y., Eddy, S.~R., Mistry, J.,
+  Mitchell, A.~L., Potter, S.~C., Punta, M., Qureshi, M., Sangrador-Vegas, A.,
+  Salazar, G.~A., Tate, J. \& Bateman, A.}  (2015).
+\newblock The Pfam protein families database: towards a more sustainable
+  future.
+\newblock {\em Nucleic Acids Research\/}, {\bf 44}(D1), D279--D285.
+\newblock \urlprefix\url{https://doi.org/10.1093\%2Fnar\%2Fgkv1344}.
+
+\bibitem[{Fischer \& Eisenberg(1999)}]{Fischer_1999}
+{\bf Fischer, D. \& Eisenberg, D.}  (1999).
+\newblock Finding families for genomic {ORFans}.
+\newblock {\em Bioinformatics\/}, {\bf 15}(9), 759--762.
+\newblock
+  \urlprefix\url{https://doi.org/10.1093\%2Fbioinformatics\%2F15.9.759}.
+
+\bibitem[{Galperin(2004)}]{Galperin_2004}
+{\bf Galperin, M.~Y.}  (2004).
+\newblock {\textquotesingle}Conserved hypothetical{\textquotesingle} proteins:
+  prioritization of targets for experimental study.
+\newblock {\em Nucleic Acids Research\/}, {\bf 32}(18), 5452--5463.
+\newblock \urlprefix\url{https://doi.org/10.1093\%2Fnar\%2Fgkh885}.
+
+\bibitem[{Gibbons et~al.(2013)Gibbons, Caporaso, Pirrung, Field, Knight \&
+  Gilbert}]{Gibbons_2013}
+{\bf Gibbons, S.~M., Caporaso, J.~G., Pirrung, M., Field, D., Knight, R. \&
+  Gilbert, J.~A.}  (2013).
+\newblock Evidence for a persistent microbial seed bank throughout the global
+  ocean.
+\newblock {\em Proceedings of the National Academy of Sciences\/}, {\bf
+  110}(12), 4651--4655.
+\newblock \urlprefix\url{https://doi.org/10.1073\%2Fpnas.1217767110}.
+
+\bibitem[{Gloor et~al.(2017)Gloor, Macklaim, Pawlowsky-Glahn \&
+  Egozcue}]{Gloor_2017}
+{\bf Gloor, G.~B., Macklaim, J.~M., Pawlowsky-Glahn, V. \& Egozcue, J.~J.}
+  (2017).
+\newblock Microbiome Datasets Are Compositional: And This Is Not Optional.
+\newblock {\em Frontiers in Microbiology\/}, {\bf 8}.
+\newblock \urlprefix\url{https://doi.org/10.3389\%2Ffmicb.2017.02224}.
+
+\bibitem[{Gobet et~al.(2011)Gobet, B{\"o}er, Huse, van Beusekom, Quince, Sogin,
+  Boetius \& Ramette}]{Gobet_2011}
+{\bf Gobet, A., B{\"o}er, S.~I., Huse, S.~M., van Beusekom, J. E.~E., Quince,
+  C., Sogin, M.~L., Boetius, A. \& Ramette, A.}  (2011).
+\newblock Diversity and dynamics of rare and of resident bacterial populations
+  in coastal sands.
+\newblock {\em The {ISME} Journal\/}, {\bf 6}(3), 542--553.
+\newblock \urlprefix\url{https://doi.org/10.1038\%2Fismej.2011.132}.
+
+\bibitem[{Guy et~al.(2010)Guy, Kultima \& Andersson}]{Guy_2010}
+{\bf Guy, L., Kultima, J.~R. \& Andersson, S. G.~E.}  (2010).
+\newblock {genoPlotR}: comparative gene and genome visualization in R.
+\newblock {\em Bioinformatics\/}, {\bf 26}(18), 2334--2335.
+\newblock \urlprefix\url{https://doi.org/10.1093\%2Fbioinformatics\%2Fbtq413}.
+
+\bibitem[{Hanson et~al.(2010)Hanson, Pribat, Waller \&
+  de~Cr{\'{e}}cy-Lagard}]{Hanson_2010}
+{\bf Hanson, A.~D., Pribat, A., Waller, J.~C. \& de~Cr{\'{e}}cy-Lagard, V.}
+  (2010).
+\newblock `Unknown' proteins and `orphan' enzymes: the missing half of the
+  engineering parts list {\textendash} and how to find it.
+\newblock {\em Biochemical Journal\/}, {\bf 425}(1), 1--11.
+\newblock \urlprefix\url{https://doi.org/10.1042\%2Fbj20091328}.
+
+\bibitem[{Hijmans(2017)}]{Hijmans_2017}
+{\bf Hijmans, R.~J.}  (2017).
+\newblock {\em geosphere: Spherical Trigonometry\/}.
+\newblock \urlprefix\url{https://CRAN.R-project.org/package=geosphere}.
+\newblock R package version 1.5-7.
+
+\bibitem[{H{\"o}ps et~al.(2018)H{\"o}ps, Jeffryes \& Bateman}]{H_ps_2018}
+{\bf H{\"o}ps, W., Jeffryes, M. \& Bateman, A.}  (2018).
+\newblock Gene Unprediction with Spurio: A tool to identify spurious protein
+  sequences.
+\newblock {\em F1000Research\/}, {\bf 7}, 261.
+\newblock \urlprefix\url{https://doi.org/10.12688\%2Ff1000research.14050.1}.
+
+\bibitem[{Huerta-Cepas et~al.(2015)Huerta-Cepas, Szklarczyk, Forslund, Cook,
+  Heller, Walter, Rattei, Mende, Sunagawa, Kuhn, Jensen, von Mering \&
+  Bork}]{Huerta_Cepas_2015}
+{\bf Huerta-Cepas, J., Szklarczyk, D., Forslund, K., Cook, H., Heller, D.,
+  Walter, M.~C., Rattei, T., Mende, D.~R., Sunagawa, S., Kuhn, M., Jensen,
+  L.~J., von Mering, C. \& Bork, P.}  (2015).
+\newblock {eggNOG} 4.5: a hierarchical orthology framework with improved
+  functional annotations for eukaryotic, prokaryotic and viral sequences.
+\newblock {\em Nucleic Acids Research\/}, {\bf 44}(D1), D286--D293.
+\newblock \urlprefix\url{https://doi.org/10.1093\%2Fnar\%2Fgkv1248}.
+
+\bibitem[{Jaroszewski et~al.(2009)Jaroszewski, Li, Krishna, Bakolitsa, Wooley,
+  Deacon, Wilson \& Godzik}]{Jaroszewski_2009}
+{\bf Jaroszewski, L., Li, Z., Krishna, S.~S., Bakolitsa, C., Wooley, J.,
+  Deacon, A.~M., Wilson, I.~A. \& Godzik, A.}  (2009).
+\newblock Exploration of Uncharted Regions of the Protein Universe.
+\newblock {\em {PLoS} Biology\/}, {\bf 7}(9), e1000205.
+\newblock \urlprefix\url{https://doi.org/10.1371\%2Fjournal.pbio.1000205}.
+
+\bibitem[{Jordan et~al.(2002)Jordan, Rogozin, Wolf \& Koonin}]{Jordan_2002}
+{\bf Jordan, I.~K., Rogozin, I.~B., Wolf, Y.~I. \& Koonin, E.~V.}  (2002).
+\newblock Essential Genes Are More Evolutionarily Conserved Than Are
+  Nonessential Genes in Bacteria.
+\newblock {\em Genome Research\/}, {\bf 12}(6), 962--968.
+\newblock \urlprefix\url{https://doi.org/10.1101\%2Fgr.87702}.
+
+\bibitem[{Kassambara(2017)}]{Kassambara_2017}
+{\bf Kassambara, A.}  (2017).
+\newblock {\em ggpubr: 'ggplot2' Based Publication Ready Plots\/}.
+\newblock \urlprefix\url{https://CRAN.R-project.org/package=ggpubr}.
+\newblock R package version 0.1.6.
+
+\bibitem[{Kopf et~al.(2015)Kopf, Bicak, Kottmann, Schnetzer, Kostadinov
+  et~al.}]{Kopf_2015}
+{\bf Kopf, A., Bicak, M., Kottmann, R., Schnetzer, J., Kostadinov, I. et~al.}
+  (2015).
+\newblock The ocean sampling day consortium.
+\newblock {\em {GigaScience}\/}, {\bf 4}(1).
+\newblock \urlprefix\url{https://doi.org/10.1186\%2Fs13742-015-0066-5}.
+
+\bibitem[{Lahti et~al.(2012-2017)Lahti, Shetty, Blake \&
+  Salojarvi}]{Lahti_2017}
+{\bf Lahti, L., Shetty, S., Blake, T. \& Salojarvi, J.}  (2012-2017).
+\newblock microbiome R package.
+
+\bibitem[{Leis et~al.(2013)Leis, Angelov \& Liebl}]{Leis_2013}
+{\bf Leis, B., Angelov, A. \& Liebl, W.}  (2013).
+\newblock Screening and Expression of Genes from Metagenomes.
+\newblock In {\em Advances in Applied Microbiology\/}, 1--68. Elsevier.
+\newblock
+  \urlprefix\url{https://doi.org/10.1016\%2Fb978-0-12-407678-5.00001-5}.
+
+\bibitem[{Levins(1966)}]{Levins_1966}
+{\bf Levins, R.}  (1966).
+\newblock The strategy of model building in population ecology.
+\newblock {\em American Scientist\/}, {\bf 54}(4), 421--431.
+\newblock
+  \urlprefix\url{http://www.jstor.org/stable/27836590?seq=1#page_scan_tab_contents}.
+
+\bibitem[{Li \& Godzik(2006)}]{Li_2006}
+{\bf Li, W. \& Godzik, A.}  (2006).
+\newblock Cd-hit: a fast program for clustering and comparing large sets of
+  protein or nucleotide sequences.
+\newblock {\em Bioinformatics\/}, {\bf 22}(13), 1658--1659.
+\newblock \urlprefix\url{https://doi.org/10.1093\%2Fbioinformatics\%2Fbtl158}.
+
+\bibitem[{Li et~al.(2008)Li, Wooley \& Godzik}]{Li_2008}
+{\bf Li, W., Wooley, J.~C. \& Godzik, A.}  (2008).
+\newblock Probing Metagenomics by Rapid Cluster Analysis of Very Large
+  Datasets.
+\newblock {\em {PLoS} {ONE}\/}, {\bf 3}(10), e3375.
+\newblock \urlprefix\url{https://doi.org/10.1371\%2Fjournal.pone.0003375}.
+
+\bibitem[{Logares et~al.(2012)Logares, Lindstr{\"o}m, Langenheder, Logue,
+  Paterson, Laybourn-Parry, Rengefors, Tranvik \& Bertilsson}]{Logares_2012}
+{\bf Logares, R., Lindstr{\"o}m, E.~S., Langenheder, S., Logue, J.~B.,
+  Paterson, H., Laybourn-Parry, J., Rengefors, K., Tranvik, L. \& Bertilsson,
+  S.}  (2012).
+\newblock Biogeography of bacterial communities exposed to progressive
+  long-term environmental change.
+\newblock {\em The {ISME} Journal\/}, {\bf 7}(5), 937--948.
+\newblock \urlprefix\url{https://doi.org/10.1038\%2Fismej.2012.168}.
+
+\bibitem[{Louca et~al.(2016)Louca, Parfrey \& Doebeli}]{Louca_2016}
+{\bf Louca, S., Parfrey, L.~W. \& Doebeli, M.}  (2016).
+\newblock Decoupling function and taxonomy in the global ocean microbiome.
+\newblock {\em Science\/}, {\bf 353}(6305), 1272--1277.
+\newblock \urlprefix\url{https://doi.org/10.1126\%2Fscience.aaf4507}.
+
+\bibitem[{Marcy et~al.(2007)Marcy, Ouverney, Bik, Losekann, Ivanova, Martin,
+  Szeto, Platt, Hugenholtz, Relman \& Quake}]{Marcy_2007}
+{\bf Marcy, Y., Ouverney, C., Bik, E.~M., Losekann, T., Ivanova, N., Martin,
+  H.~G., Szeto, E., Platt, D., Hugenholtz, P., Relman, D.~A. \& Quake, S.~R.}
+  (2007).
+\newblock Dissecting biological "dark matter" with single-cell genetic analysis
+  of rare and uncultivated TM7 microbes from the human mouth.
+\newblock {\em Proceedings of the National Academy of Sciences\/}, {\bf
+  104}(29), 11889--11894.
+\newblock \urlprefix\url{https://doi.org/10.1073/pnas.0704662104}.
+
+\bibitem[{Martin et~al.(1990)Martin, Gordon \& Fitzwater}]{Martin_1990}
+{\bf Martin, J.~H., Gordon, R.~M. \& Fitzwater, S.~E.}  (1990).
+\newblock Iron in Antarctic waters.
+\newblock {\em Nature\/}, {\bf 345}(6271), 156--158.
+\newblock \urlprefix\url{https://doi.org/10.1038\%2F345156a0}.
+
+\bibitem[{McInerney et~al.(2017)McInerney, McNally \&
+  O{\textquotesingle}Connell}]{McInerney_2017}
+{\bf McInerney, J.~O., McNally, A. \& O{\textquotesingle}Connell, M.~J.}
+  (2017).
+\newblock Why prokaryotes have pangenomes.
+\newblock {\em Nature Microbiology\/}, {\bf 2}(4), 17040.
+\newblock \urlprefix\url{https://doi.org/10.1038/nmicrobiol.2017.40}.
+
+\bibitem[{McMahon(2015)}]{McMahon_2015}
+{\bf McMahon, K.}  (2015).
+\newblock `Metagenomics 2.0'.
+\newblock {\em Environmental Microbiology Reports\/}, {\bf 7}(1), 38--39.
+\newblock \urlprefix\url{https://doi.org/10.1111\%2F1758-2229.12253}.
+
+\bibitem[{McMurdie \& Holmes(2013)}]{McMurdie_2013}
+{\bf McMurdie, P.~J. \& Holmes, S.}  (2013).
+\newblock phyloseq: An R package for reproducible interactive analysis and
+  graphics of microbiome census data.
+\newblock {\em PLoS ONE\/}, {\bf 8}(4), e61217.
+\newblock \urlprefix\url{http://dx.plos.org/10.1371/journal.pone.0061217}.
+
+\bibitem[{Menzel et~al.(2016)Menzel, Ng \& Krogh}]{Menzel_2016}
+{\bf Menzel, P., Ng, K.~L. \& Krogh, A.}  (2016).
+\newblock Fast and sensitive taxonomic classification for metagenomics with
+  Kaiju.
+\newblock {\em Nature Communications\/}, {\bf 7}, 11257.
+\newblock \urlprefix\url{https://doi.org/10.1038\%2Fncomms11257}.
+
+\bibitem[{Mikl{\'{o}}s \& Podani(2004)}]{Mikls_2004}
+{\bf Mikl{\'{o}}s, I. \& Podani, J.}  (2004).
+\newblock Randomization of presence{\textendash}absence matrices: comments and
+  new algorithms.
+\newblock {\em Ecology\/}, {\bf 85}(1), 86--92.
+\newblock \urlprefix\url{https://doi.org/10.1890\%2F03-0101}.
+
+\bibitem[{Milici et~al.(2017)Milici, Vital, Tomasch, Badewien, Giebel,
+  Plumeier, Wang, Pieper, Wagner-D{\"o}bler \& Simon}]{Milici_2017}
+{\bf Milici, M., Vital, M., Tomasch, J., Badewien, T.~H., Giebel, H.-A.,
+  Plumeier, I., Wang, H., Pieper, D.~H., Wagner-D{\"o}bler, I. \& Simon, M.}
+  (2017).
+\newblock Diversity and community composition of particle-associated and
+  free-living bacteria in mesopelagic and bathypelagic Southern Ocean water
+  masses: Evidence of dispersal limitation in the Bransfield Strait.
+\newblock {\em Limnology and Oceanography\/}, {\bf 62}(3), 1080--1095.
+\newblock \urlprefix\url{https://doi.org/10.1002\%2Flno.10487}.
+
+\bibitem[{Mirdita et~al.(2016)Mirdita, von~den Driesch, Galiez, Martin,
+  S{\"o}ding \& Steinegger}]{Mirdita_2016}
+{\bf Mirdita, M., von~den Driesch, L., Galiez, C., Martin, M.~J., S{\"o}ding,
+  J. \& Steinegger, M.}  (2016).
+\newblock Uniclust databases of clustered and deeply annotated protein
+  sequences and alignments.
+\newblock {\em Nucleic Acids Research\/}, {\bf 45}(D1), D170--D176.
+\newblock \urlprefix\url{https://doi.org/10.1093\%2Fnar\%2Fgkw1081}.
+
+\bibitem[{Mudgal et~al.(2015)Mudgal, Sandhya, Chandra \&
+  Srinivasan}]{Mudgal_2015}
+{\bf Mudgal, R., Sandhya, S., Chandra, N. \& Srinivasan, N.}  (2015).
+\newblock De-{DUFing} the {DUFs}: Deciphering distant evolutionary
+  relationships of Domains of Unknown Function using sensitive homology
+  detection methods.
+\newblock {\em Biology Direct\/}, {\bf 10}(1).
+\newblock \urlprefix\url{https://doi.org/10.1186\%2Fs13062-015-0069-2}.
+
+\bibitem[{Nealson \& Venter(2007)}]{Nealson_2007}
+{\bf Nealson, K.~H. \& Venter, J.~C.}  (2007).
+\newblock Metagenomics and the global ocean survey: what{\textquotesingle}s in
+  it for us and why should we care?
+\newblock {\em The {ISME} Journal\/}, {\bf 1}(3), 185--187.
+\newblock \urlprefix\url{https://doi.org/10.1038\%2Fismej.2007.43}.
+
+\bibitem[{Nekrutenko(2001)}]{Nekrutenko_2001}
+{\bf Nekrutenko, A.}  (2001).
+\newblock The {KA}/{KS} Ratio Test for Assessing the Protein-Coding Potential
+  of Genomic Regions: An Empirical and Simulation Study.
+\newblock {\em Genome Research\/}, {\bf 12}(1), 198--202.
+\newblock \urlprefix\url{https://doi.org/10.1101\%2Fgr.200901}.
+
+\bibitem[{Oksanen et~al.(2017)Oksanen, Blanchet, Friendly, Kindt, Legendre,
+  McGlinn, Minchin, O'Hara, Simpson, Solymos, Stevens, Szoecs \&
+  Wagner}]{Oksanen_2017}
+{\bf Oksanen, J., Blanchet, F.~G., Friendly, M., Kindt, R., Legendre, P.,
+  McGlinn, D., Minchin, P.~R., O'Hara, R.~B., Simpson, G.~L., Solymos, P.,
+  Stevens, M. H.~H., Szoecs, E. \& Wagner, H.}  (2017).
+\newblock {\em vegan: Community Ecology Package\/}.
+\newblock \urlprefix\url{https://CRAN.R-project.org/package=vegan}.
+\newblock R package version 2.4-5.
+
+\bibitem[{Parks et~al.(2011)Parks, MacDonald \& Beiko}]{Parks_2011}
+{\bf Parks, D.~H., MacDonald, N.~J. \& Beiko, R.~G.}  (2011).
+\newblock Classifying short genomic fragments from novel lineages using
+  composition and homology.
+\newblock {\em {BMC} Bioinformatics\/}, {\bf 12}(1), 328.
+\newblock \urlprefix\url{https://doi.org/10.1186\%2F1471-2105-12-328}.
+
+\bibitem[{Paulson et~al.(2013)Paulson, Stine, Bravo \& Pop}]{Paulson_2013}
+{\bf Paulson, J.~N., Stine, O.~C., Bravo, H.~C. \& Pop, M.}  (2013).
+\newblock Differential abundance analysis for microbial marker-gene surveys.
+\newblock {\em Nature Methods\/}, {\bf 10}(12), 1200--1202.
+\newblock \urlprefix\url{https://doi.org/10.1038\%2Fnmeth.2658}.
+
+\bibitem[{Pavlopoulos(2017)}]{Pavlopoulos_2017}
+{\bf Pavlopoulos, G.~A.}  (2017).
+\newblock How to Cluster Protein Sequences: Tools, Tips and Commands.
+\newblock {\em {MOJ} Proteomics {\&} Bioinformatics\/}, {\bf 5}(5).
+\newblock \urlprefix\url{https://doi.org/10.15406\%2Fmojpb.2017.05.00174}.
+
+\bibitem[{Pedr{\'{o}}s-Ali{\'{o}}(2006)}]{Pedros_2006}
+{\bf Pedr{\'{o}}s-Ali{\'{o}}, C.}  (2006).
+\newblock Marine microbial diversity: can it be determined?
+\newblock {\em Trends in Microbiology\/}, {\bf 14}(6), 257--263.
+\newblock \urlprefix\url{https://doi.org/10.1016\%2Fj.tim.2006.04.007}.
+
+\bibitem[{Perdig{\~{a}}o et~al.(2017)Perdig{\~{a}}o, Rosa \&
+  O'Donoghue}]{Perdig_o_2017}
+{\bf Perdig{\~{a}}o, N., Rosa, A.~C. \& O'Donoghue, S.~I.}  (2017).
+\newblock The Dark Proteome Database.
+\newblock {\em {BioData} Mining\/}, {\bf 10}(1).
+\newblock \urlprefix\url{https://doi.org/10.1186\%2Fs13040-017-0144-6}.
+
+\bibitem[{Piepel \& Aitchison(1988)}]{Piepel_1988}
+{\bf Piepel, G.~F. \& Aitchison, J.}  (1988).
+\newblock The Statistical Analysis of Compositional Data.
+\newblock {\em Technometrics\/}, {\bf 30}(1), 120.
+\newblock \urlprefix\url{https://doi.org/10.2307\%2F1270335}.
+
+\bibitem[{Prosser et~al.(2014)Prosser, Larrouy-Maumus \&
+  de~Carvalho}]{Prosser_2014}
+{\bf Prosser, G.~A., Larrouy-Maumus, G. \& de~Carvalho, L. P.~S.}  (2014).
+\newblock Metabolomic strategies for the identification of new enzyme functions
+  and metabolic pathways.
+\newblock {\em {EMBO} reports\/}.
+\newblock \urlprefix\url{https://doi.org/10.15252\%2Fembr.201338283}.
+
+\bibitem[{{R Development Core Team}(2008)}]{R}
+{\bf {R Development Core Team}}.  (2008).
+\newblock {\em R: A Language and Environment for Statistical Computing\/}.
+\newblock R Foundation for Statistical Computing, Vienna, Austria.
+\newblock \urlprefix\url{http://www.R-project.org}.
+\newblock {ISBN} 3-900051-07-0.
+
+\bibitem[{Remmert et~al.(2011)Remmert, Biegert, Hauser \&
+  S{\"o}ding}]{Remmert_2011}
+{\bf Remmert, M., Biegert, A., Hauser, A. \& S{\"o}ding, J.}  (2011).
+\newblock {HHblits}: lightning-fast iterative protein sequence searching by
+  {HMM}-{HMM} alignment.
+\newblock {\em Nature Methods\/}, {\bf 9}(2), 173--175.
+\newblock \urlprefix\url{https://doi.org/10.1038\%2Fnmeth.1818}.
+
+\bibitem[{Roux et~al.(2015)Roux, Hallam, Woyke \& Sullivan}]{Roux_2015}
+{\bf Roux, S., Hallam, S.~J., Woyke, T. \& Sullivan, M.~B.}  (2015).
+\newblock Viral dark matter and virus{\textendash}host interactions resolved
+  from publicly available microbial genomes.
+\newblock {\em {eLife}\/}, {\bf 4}.
+\newblock \urlprefix\url{https://doi.org/10.7554\%2Felife.08490}.
+
+\bibitem[{Rusch et~al.(2007)Rusch, Halpern, Sutton, Heidelberg, Williamson
+  et~al.}]{Rusch_2007}
+{\bf Rusch, D.~B., Halpern, A.~L., Sutton, G., Heidelberg, K.~B., Williamson,
+  S. et~al.}  (2007).
+\newblock The Sorcerer {II} Global Ocean Sampling Expedition: Northwest
+  Atlantic through Eastern Tropical Pacific.
+\newblock {\em {PLoS} Biology\/}, {\bf 5}(3), e77.
+\newblock \urlprefix\url{https://doi.org/10.1371\%2Fjournal.pbio.0050077}.
+
+\bibitem[{Seemann(2014)}]{Seemann_2014}
+{\bf Seemann, T.}  (2014).
+\newblock Prokka: rapid prokaryotic genome annotation.
+\newblock {\em Bioinformatics\/}, {\bf 30}(14), 2068--2069.
+\newblock \urlprefix\url{https://doi.org/10.1093\%2Fbioinformatics\%2Fbtu153}.
+
+\bibitem[{Shapiro(2017)}]{Shapiro_2017}
+{\bf Shapiro, B.~J.}  (2017).
+\newblock The population genetics of pangenomes.
+\newblock {\em Nature Microbiology\/}, {\bf 2}(12), 1574--1574.
+\newblock \urlprefix\url{https://doi.org/10.1038\%2Fs41564-017-0066-6}.
+
+\bibitem[{Sharpton et~al.(2012)Sharpton, Jospin, Wu, Langille, Pollard \&
+  Eisen}]{Sharpton_2012}
+{\bf Sharpton, T.~J., Jospin, G., Wu, D., Langille, M.~G., Pollard, K.~S. \&
+  Eisen, J.~A.}  (2012).
+\newblock Sifting through genomes with iterative-sequence clustering produces a
+  large, phylogenetically diverse protein-family resource.
+\newblock {\em {BMC} Bioinformatics\/}, {\bf 13}(1), 264.
+\newblock \urlprefix\url{https://doi.org/10.1186\%2F1471-2105-13-264}.
+
+\bibitem[{States \& Boguski(1991)}]{States_1991}
+{\bf States, D.~J. \& Boguski, M.~S.}  (1991).
+\newblock Similarity and Homology.
+\newblock In {\em Sequence Analysis Primer\/}, 89--157. Palgrave Macmillan
+  {UK}.
+\newblock \urlprefix\url{https://doi.org/10.1007\%2F978-1-349-21355-9_3}.
+
+\bibitem[{Steinegger \& S{\"o}ding(2017)}]{Steinegger_2017}
+{\bf Steinegger, M. \& S{\"o}ding, J.}  (2017).
+\newblock {MMseqs}2 enables sensitive protein sequence searching for the
+  analysis of massive data sets.
+\newblock {\em Nature Biotechnology\/}.
+\newblock \urlprefix\url{https://doi.org/10.1038\%2Fnbt.3988}.
+
+\bibitem[{Sunagawa et~al.(2015)Sunagawa, Coelho, Chaffron, Kultima, Labadie
+  et~al.}]{Sunagawa_2015}
+{\bf Sunagawa, S., Coelho, L.~P., Chaffron, S., Kultima, J.~R., Labadie, K.
+  et~al.}  (2015).
+\newblock Structure and function of the global ocean microbiome.
+\newblock {\em Science\/}, {\bf 348}(6237), 1261359--1261359.
+\newblock \urlprefix\url{https://doi.org/10.1126\%2Fscience.1261359}.
+
+\bibitem[{Tagliabue et~al.(2014)Tagliabue, Sall{\'{e}}e, Bowie, L{\'{e}}vy,
+  Swart \& Boyd}]{Tagliabue_2014}
+{\bf Tagliabue, A., Sall{\'{e}}e, J.-B., Bowie, A.~R., L{\'{e}}vy, M., Swart,
+  S. \& Boyd, P.~W.}  (2014).
+\newblock Surface-water iron supplies in the Southern Ocean sustained by deep
+  winter mixing.
+\newblock {\em Nature Geoscience\/}, {\bf 7}(4), 314--320.
+\newblock \urlprefix\url{https://doi.org/10.1038\%2Fngeo2101}.
+
+\bibitem[{Tatusov(2000)}]{Tatusov_2000}
+{\bf Tatusov, R.~L.}  (2000).
+\newblock The COG database: a tool for genome-scale analysis of protein
+  functions and evolution.
+\newblock {\em Nucleic Acids Research\/}, {\bf 28}(1), 33--36.
+\newblock \urlprefix\url{https://doi.org/10.1093\%2Fnar\%2F28.1.33}.
+
+\bibitem[{Venter(2004)}]{Venter_2004}
+{\bf Venter, J.~C.}  (2004).
+\newblock Environmental Genome Shotgun Sequencing of the Sargasso Sea.
+\newblock {\em Science\/}, {\bf 304}(5667), 66--74.
+\newblock \urlprefix\url{https://doi.org/10.1126\%2Fscience.1093857}.
+
+\bibitem[{Wickham(2016)}]{Wickham_2016}
+{\bf Wickham, H.}  (2016).
+\newblock {\em ggplot2: Elegant Graphics for Data Analysis\/}.
+\newblock Springer-Verlag New York.
+\newblock ISBN 978-3-319-24277-4.
+\newblock \urlprefix\url{http://ggplot2.org}.
+
+\bibitem[{Wickham(2017)}]{Wickham_2017}
+{\bf Wickham, H.}  (2017).
+\newblock {\em tidyverse: Easily Install and Load the 'Tidyverse'\/}.
+\newblock \urlprefix\url{https://CRAN.R-project.org/package=tidyverse}.
+\newblock R package version 1.2.1.
+
+\bibitem[{Wilkins et~al.(2013)Wilkins, Yau, Williams, Allen, Brown, DeMaere,
+  Lauro \& Cavicchioli}]{Wilkins_2013}
+{\bf Wilkins, D., Yau, S., Williams, T.~J., Allen, M.~A., Brown, M.~V.,
+  DeMaere, M.~Z., Lauro, F.~M. \& Cavicchioli, R.}  (2013).
+\newblock Key microbial drivers in Antarctic aquatic environments.
+\newblock {\em {FEMS} Microbiology Reviews\/}, {\bf 37}(3), 303--335.
+\newblock \urlprefix\url{https://doi.org/10.1111\%2F1574-6976.12007}.
+
+\bibitem[{Wilkinson et~al.(2016)Wilkinson, Dumontier, Aalbersberg, Appleton,
+  Axton et~al.}]{Wilkinson_2016}
+{\bf Wilkinson, M.~D., Dumontier, M., Aalbersberg, I.~J., Appleton, G., Axton,
+  M. et~al.}  (2016).
+\newblock The {FAIR} Guiding Principles for scientific data management and
+  stewardship.
+\newblock {\em Scientific Data\/}, {\bf 3}, 160018.
+\newblock \urlprefix\url{https://doi.org/10.1038\%2Fsdata.2016.18}.
+
+\bibitem[{Wood \& Salzberg(2014)}]{Wood_2014}
+{\bf Wood, D.~E. \& Salzberg, S.~L.}  (2014).
+\newblock Kraken: ultrafast metagenomic sequence classification using exact
+  alignments.
+\newblock {\em Genome Biology\/}, {\bf 15}(3), R46.
+\newblock \urlprefix\url{https://doi.org/10.1186\%2Fgb-2014-15-3-r46}.
+
+\bibitem[{Wyman et~al.(2017)Wyman, Avila-Herrera, Nayfach \&
+  Pollard}]{Wyman_2017}
+{\bf Wyman, S.~K., Avila-Herrera, A., Nayfach, S. \& Pollard, K.~S.}  (2017).
+\newblock A most wanted list of conserved protein families with no known
+  domains.
+\newblock \urlprefix\url{https://doi.org/10.1101\%2F207985}.
+
+\bibitem[{Yooseph et~al.(2007)Yooseph, Sutton, Rusch, Halpern, Williamson
+  et~al.}]{Yooseph_2007}
+{\bf Yooseph, S., Sutton, G., Rusch, D.~B., Halpern, A.~L., Williamson, S.~J.
+  et~al.}  (2007).
+\newblock The Sorcerer {II} Global Ocean Sampling Expedition: Expanding the
+  Universe of Protein Families.
+\newblock {\em {PLoS} Biology\/}, {\bf 5}(3), e16.
+\newblock \urlprefix\url{https://doi.org/10.1371\%2Fjournal.pbio.0050016}.
+
+\end{thebibliography}

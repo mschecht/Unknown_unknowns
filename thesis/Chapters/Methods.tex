@@ -1,0 +1,100 @@
+% Methods
+
+% Chapter Template
+
+\chapter{Materials and Methods} % Main chapter title
+
+\label{Methods} % Change X to a consecutive number; for referencing this chapter elsewhere, use \ref{ChapterX}
+
+%\lhead{Chapter 1. \emph{Introduction}} % Change X to a consecutive number; this is for the header on each page - perhaps a shortened title
+
+\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+\renewcommand{\sectionmark}[1]{\markright{#1}}
+\fancyhead[RE]{\small\leftmark}
+% Section in the left on even pages}
+\fancyhead[LO]{\small\rightmark}%Section in the left on odd pages
+
+%\section{A section goes here}
+
+\section{Initial dataset preparation}
+
+The data used in this thesis was produced from the Vanni et. al. ORF clustering workflow (\url{https://orcid.org/0000-e2-1124-1147}) which includes The Human Microbiome Project (HMP), TARA Oceans, Ocean Sampling Day (OSD), Global Ocean Sampling Expedition (GOS), and Malaspina  (Table ~\ref{table:table1}). This dataset of 1,837 metagenomes (322,248,552 ORFs) was clustered into 32,465,074 total clusters, of which 2,953,903 were considered as high-quality. These high quality clusters were aggregated into components, then subsetted for only ones that occurred in the TARA prokaryotic enriched data set. This yielded a total of 18,644 components for the final data set used in this thesis (Table ~\ref{table:table2}).\\
+
+\begin{table}[H]
+\centering
+\caption{Vanni et. al. initial clustering dataset}
+\label{table:table1}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Metagenomic Project} & \textbf{Number of Metagenomes} & \textbf{Number of ORFs} \\
+\midrule
+Human Microbiome Project & 1249 & 162,687,295 \\
+TARA Oceans & 242 & 111,903,261 \\
+Ocean Sampling Day & 150 & 7,015,383 \\
+Global Ocean Sampling & 80 & 20,068,580 \\
+Malaspina & 116 & 20,574,033 \\
+\textbf{Total} & \textbf{1,837} & \textbf{322,248,522} \\
+\bottomrule
+\end{tabular}
+\label{table:table1}
+\end{table}
+
+The TARA prokaryotic component abundance dataset (prokaryote-enriched fractions: 0.22 to 1.6 mm, 0.22 to 3 mm; n = 139) was filtered for low total count samples and low mean proportion components. Samples were removed from the analysis if their total component counts were less than the median total component count subtracted from  1.5 * MAD (Median Absolute Deviation) of the total counts. Next, components with a mean proportion less than 1e-5 across all samples were removed from the dataset using the Tidyverse package in R \citep{Wickham_2017}. The resulting filtered component abundance matrices were then stored as phyloseq objects \citep{Oksanen_2017, McMurdie_2013}. R version 3.4.3 (2017-11-30) was used for all R libraries mentioned in this thesis \citep{R}. \\
+
+\begin{table}[H]
+\centering
+\caption{TARA subset of components used for this thesis}
+\label{my-label}
+\begin{tabular}{llllll}
+\toprule
+                    & \textbf{Knowns} & \textbf{GUs} & \textbf{EUs} & \textbf{Kwp} & \textbf{Total} \\
+\midrule
+\textbf{Components} & 3997            & 6497         & 1534         & 6616         & 18,644        \\
+\bottomrule
+\end{tabular}
+\label{table:table2}
+\end{table}
+
+\section{Data standardization}
+
+For PCA (principal component analysis) ordinations the dataset was center log ratio (CLR) transformed \citep{Piepel_1988} using the R bioconductor package, microbiome \citep{Lahti_2017}. Cumulative sum scaling (CSS) normalization from the R package metagenomeSEQ \citep{Paulson_2013} was applied to the dataset for the distance-decay analysis and nMDS (non-Metric Dimensional Scaling) ordinations.\\
+
+\section{Indirect gradient analysis of TARA Ocean sample sites}
+
+The CLR transformed, component abundance matrix was visualized using PCA. These calculations were performed using the R package Vegan \citep{Oksanen_2017} and graphically arranged using the R package ggpubr \citep{Kassambara_2017}. Sample sites in the ordinations were colored by sample depth category and the temperature to explore gradients and clustering patterns. Contextual data from the TARA Ocean project was used from \cite{Sunagawa_2015}.\\
+
+Residuals of the PCA ordination were visualized to screen for normality and explore if the relationships between variables were linear. Additionally, a scree plot was plotted to visualize the variance captured by each principal component. Next, a NMDS plot was calculated, based on a Bray-Curtis dissimilarity matrix, to see if sample site clustering was similar to the PCA via a distance based ordination method. Additionally, a Shepard plot was visualized to explore how well the ordinated distances in the NMDS were a good representation of the actual distances within the dissimilarity matrix.\\
+
+Hypotheses about the clustering results observed in the ordinations were tested for significance. This was done by calculating a PERMANOVA using the adonis function in the VEGAN package in R. Additionally, clustering due to beta-dispersion was explored by using the betadisper function, also in the Vegan package in R \citep{Oksanen_2017}.
+
+\section{Niche breadth analysis of components}
+
+To quantify scores of component theoretical niche and resource occupancy, Niche Breadth (B) was calculated \citep{Levins_1966}.\\
+
+\[B = 1/\sum_{i=1}^{N}P^2ij \]
+
+B is one divided by the sum of all proportions of a biological entity (P) from 1 to N sites of biological entity \textit{i}  through biological entity \textit{j}. From a macro-ecological perspective, B is one divided by the sum of all proportions a species represents in all the samples measured. The fact that P is squared in the denominator of the equation removes some additive effect of the summed proportions. 
+
+To classify components as having a \quotes{wide} or \quotes{narrow}, a null distribution was created of each component B score. The original component abundance matrix was randomized 100 times using the Vegan package with the quasiswap count method in the function \textit{nullmodel} \citep{Mikls_2004, Oksanen_2017}. This method randomizes abundance matrices by mixing up numbers of 2x2 matrix subsets within the larger matrix. Additionally, the method maintains abundance matrix column and row sums to preserve original attributes of the matrix in the new randomized matrices. Once the distribution for each component is calculated, if a component score was in the top 2.5\% of its distribution, it was classified as \quotes{wide}. If it was in the bottom 2.5\% of the distribution, it was classified as \quotes{narrow}. The distributions of B categories were visualized using the R package ggplot2 \citep{Wickham_2016} and assembled using the R package ggpubr \citep{Kassambara_2017}.\\
+
+\section{Screening beta diversity for geographic distance effects}
+
+For this method section the CSS transformed, component abundance matrix was used. First, Bray-Curtis dissimilarity was calculated using the Vegan package function vegdist \citep{Oksanen_2017}. Distance-decay plots were determined by plotting the Haversine distance between TARA Ocean surface sample sites against the Bray-Curtis dissimilarities. Haversine distance was calculated using the R package geosphere \citep{Hijmans_2017}. The resulting graph was visualized using the R package ggplot2 (Wickham, 2016) and assembled using the R package ggpubr \citep{Kassambara_2017}. We used the function mantel and partial.mantel to test the correlation (spearman) between the Bray-Curtis dissimilarity and the geographic distance matrices. In the case of the partial Mantel test we use the deltaTemp matrix, the absolute temperature difference between TARA samples in degree Celsius. Mantel tests went through 9999 permutations.\\
+
+TARA metagenomic sample sets defined by \cite{Delmont_2017} were used to separate TARA samples into three oceanic regions: Pacific, Atlantic, and Indian. In the Atlantic subset, samples were removed that were below the equator to focus analysis on the transect of the Gulf Stream. Distance-decay analysis was done separately for each region to remove biases of continental divides. Finally, component categories were separated into ubiquitous and non-ubiquitous. Ubiquitous components are defined as components that have a mean proportion greater than 1e-5 and be found in every sample in the TARA ocean project. To be categorized as non-ubiquitous, components only had to have a mean proportion greater than 1e-5.\\
+
+\section{Analyzing the ubiquitous EUs}
+
+The ubiquitous EUs were tested to see if they were real protein clusters and not artifacts of metagenomic sequencing or assembly. First, spurious proteins (falsely predicted ORFs) were filtered out by searching the EU clusters consensus sequence against the antiFAM database \citep{Eberhardt_2012} using the hmmsearch program from the HMMER suite \citep{Eddy_1998} with the \textit{--cut-ga} significance threshold. Results from the search were then parsed using e-value > 1e-5 and coverage >= 60\% as additional thresholds.\\
+
+The second step to legitimize the ubiquitous EU clusters was to detect remote homology using an iterative HMM-HMM profile search of the EU clusters against the Uniclust database \citep{Mirdita_2016}. We used HHBlits from the HHsuite software package \citep{Remmert_2011} with two iterations. All queries with a probability larger than 90\% to any target sequence in the database were discarded. Next, we attempted to assign taxonomy to the remaining ubiquitous EUs by running Kaiju in greedy mode to ensure sensitivity and precision \citep{Menzel_2016}.\\
+
+Finally, we mapped the ubiquitous EUs to high quality, manually curated MAGs from the TARA Ocean Project to see if they are found in populations of genomes \citep{Delmont_2017}. We aligned the cluster members from the ubiquitous EUs with FAMSA \citep{Deorowicz_2016} and we used the program hhmake from the HHSUITE to create hidden Markov model profiles (HMM). All EU HMM were stored, indexed, and retrieved using the file based storage software ffindex (\url{https://github.com/soedinglab/ffindex_soedinglab}, accessed 12.03.2018). EU HMM were retrieved and converted to MMSEQ2 format using \textit{convertprofiledb} from MMSEQS2. Next, the predicted ORFs of the TARA MAGs were converted to a MMSEQS2 database using the MMSEQS2 command \textit{createdb}. Finally, each ORF was mapped to the profile with the MMSEQS2 command search with the parameters \textit{-e} 1e-25, \textit--cov-mode 2 and -c 0.8. The results were then converted to a BLAST-tab formatted database using \textit{convertalis} program from MMSEQS2, then parsed and plotted with the ggplot2 package. Contigs containing the interesting ORFs were retrieved from the Anvi\textquotesingle o profiles using the program \textit{anvi-export-gene-calls} from Anvi\textquotesingle o v4 \citep{Eren_2015}. The functional annotation of the contigs was performed by Prokka \cite{Seemann_2014}  in metagenomic mode. The gene plots were drawn with the R package genoPlotR \citep{Guy_2010}. Muscle \citep{Edgar_2004} was used to create multiple sequence alignments of the components of interest, and the conserved consensus sequence logos were drawn using the WebLogo web server \citep{Crooks_2004}. Nucleotide sequences of the clusters with hits in the MAGs were also searched against NCBI nt and Microbial genomes using blastn from the BLAST package \cite{Camacho_2009}.\\
+
+\section{Code and data availability}
+
+All source code is available in a public repository. Additionally, all data used in this thesis will be available as FAIR data to ensure open science and access \citep{Wilkinson_2016}.\\
+
+Github: \url{https://github.com/mschecht/Unknown_unknowns}
+
+Figshare: DOI - 10.6084/m9.figshare.5979658

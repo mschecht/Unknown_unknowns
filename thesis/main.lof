@@ -1,0 +1,21 @@
+\select@language {english}
+\select@language {english}
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {1.1}{\ignorespaces Proportions of Vanni et. al. cluster categories in the TARA Ocean metagenomes}}{6}{figure.caption.11}
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {3.1}{\ignorespaces Step 1 of dataset filtering - removing low count samples}}{15}{figure.caption.24}
+\contentsline {figure}{\numberline {3.2}{\ignorespaces Step 2 of dataset filtering - removing low abundance components}}{16}{figure.caption.25}
+\contentsline {figure}{\numberline {3.3}{\ignorespaces Principal component analysis (PCA) of 135 TARA Ocean prokaryotic metagenome sampling sites from surface (SRF), deep chlorophyll maximum (DCM), and mesopelagic (MES) sites}}{17}{figure.caption.27}
+\contentsline {figure}{\numberline {3.4}{\ignorespaces Principal component analysis of the prokaryotic fraction of the 139 TARA ocean sampling sites from all depths colored by temperature}}{20}{figure.caption.33}
+\contentsline {figure}{\numberline {3.5}{\ignorespaces Levin\textquotesingle s Niche Breadth (B) scores of the component categories}}{23}{figure.caption.36}
+\contentsline {figure}{\numberline {3.6}{\ignorespaces Sample sites beta-diversity vs. geographic distance}}{25}{figure.caption.38}
+\contentsline {figure}{\numberline {3.7}{\ignorespaces Sample sites beta-diversity vs. geographic distance - ubiquitous and non-ubiquitous components}}{26}{figure.caption.39}
+\contentsline {figure}{\numberline {3.8}{\ignorespaces Beta-diveristy of ubiquitous vs non-ubiquitous components}}{28}{figure.caption.42}
+\contentsline {figure}{\numberline {3.9}{\ignorespaces EU mapping results}}{33}{figure.caption.47}
+\contentsline {figure}{\numberline {3.10}{\ignorespaces EU gene visualization}}{35}{figure.caption.48}
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {A.1}{\ignorespaces TARA Oceans PCA residuals histogram}}{40}{figure.caption.51}
+\contentsline {figure}{\numberline {A.2}{\ignorespaces TARA Oceans NMDS and Shepard Plots}}{41}{figure.caption.52}

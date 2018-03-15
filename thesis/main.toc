@@ -1,0 +1,27 @@
+\select@language {english}
+\select@language {english}
+\contentsline {chapter}{Abstract}{iii}{chapter*.4}
+\contentsline {chapter}{\numberline {1}Introduction}{1}{chapter.10}
+\contentsline {chapter}{\numberline {2}Materials and Methods}{9}{chapter.12}
+\contentsline {section}{\numberline {2.1}Initial dataset preparation}{9}{section.13}
+\contentsline {section}{\numberline {2.2}Data standardization}{10}{section.16}
+\contentsline {section}{\numberline {2.3}Indirect gradient analysis of TARA Ocean sample sites}{10}{section.17}
+\contentsline {section}{\numberline {2.4}Niche breadth analysis of components}{11}{section.18}
+\contentsline {section}{\numberline {2.5}Screening beta diversity for geographic distance effects}{12}{section.19}
+\contentsline {section}{\numberline {2.6}Analyzing the ubiquitous EUs}{12}{section.20}
+\contentsline {section}{\numberline {2.7}Code and data availability}{13}{section.21}
+\contentsline {chapter}{\numberline {3}Results and Discussion}{15}{chapter.22}
+\contentsline {section}{\numberline {3.1}Balancing noise removal and sparsity of component abundance dataset}{15}{section.23}
+\contentsline {section}{\numberline {3.2}Indirect gradient analysis of TARA Ocean sites based on component abundances}{17}{section.26}
+\contentsline {section}{\numberline {3.3}TARA Ocean Sites cluster based on depth}{18}{section.29}
+\contentsline {section}{\numberline {3.4}Greater variance observed in PCAs when all components are used to define sample sites}{19}{section.31}
+\contentsline {section}{\numberline {3.5}Unique component composition in Southern Ocean Samples}{20}{section.32}
+\contentsline {section}{\numberline {3.6}Niche Breadth analysis of component distribution}{22}{section.35}
+\contentsline {section}{\numberline {3.7}Beta diversity analyses}{24}{section.37}
+\contentsline {section}{\numberline {3.8}Investigating the Ubiquitous EU fraction}{31}{section.43}
+\contentsline {section}{\numberline {3.9}Mapping EUs to TARA Ocean MAGs}{32}{section.46}
+\contentsline {chapter}{\numberline {4}Conclusion and Outlook}{37}{chapter.49}
+\contentsline {chapter}{Appendix \numberline {A}Appendix}{40}{Appendix.50}
+\vspace {2em}
+\contentsline {chapter}{Bibliography}{42}{dummy.53}
+\contentsline {chapter}{Acknowledgements}{51}{appendix*.55}

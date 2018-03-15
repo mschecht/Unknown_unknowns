@@ -1,0 +1,56 @@
+This is BibTeX, Version 0.99d (TeX Live 2017)
+Capacity: max_strings=100000, hash_size=100000, hash_prime=85009
+The top-level auxiliary file: main.aux
+A level-1 auxiliary file: Abstract.aux
+A level-1 auxiliary file: Chapters/Introduction.aux
+A level-1 auxiliary file: Chapters/Methods.aux
+A level-1 auxiliary file: Chapters/resultsanddiscussion.aux
+A level-1 auxiliary file: Chapters/conclusionandoutlook.aux
+A level-1 auxiliary file: Appendices/Appendix.aux
+The style file: andreea.bst
+A level-1 auxiliary file: acknow.aux
+Database file #1: bib.bib.bib
+Reallocated wiz_functions (elt_size=4) to 6000 items from 3000.
+Warning--empty journal in Wyman_2017
+You've used 88 entries,
+            3159 wiz_defined-function locations,
+            1325 strings with 33129 characters,
+and the built_in function-call counts, 59342 in all, are:
+= -- 5653
+> -- 3828
+< -- 33
++ -- 2792
+- -- 1068
+* -- 5051
+:= -- 9543
+add.period$ -- 441
+call.type$ -- 88
+change.case$ -- 712
+chr.to.int$ -- 88
+cite$ -- 89
+duplicate$ -- 2236
+empty$ -- 3601
+format.name$ -- 1310
+if$ -- 11793
+int.to.chr$ -- 1
+int.to.str$ -- 1
+missing$ -- 83
+newline$ -- 535
+num.names$ -- 352
+pop$ -- 1587
+preamble$ -- 1
+purify$ -- 702
+quote$ -- 0
+skip$ -- 2177
+stack$ -- 0
+substring$ -- 2607
+swap$ -- 479
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 789
+warning$ -- 1
+while$ -- 384
+width$ -- 0
+write$ -- 1317
+(There was 1 warning)
