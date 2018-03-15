@@ -1,0 +1,648 @@
+---
+title: "EU and GU SQLite data dump"
+author:
+date:
+output: github_document
+---
+
+
+```{r}
+library(tidyverse)
+library(sqldf)
+library(RSQLite)
+```
+
+# Upload contextual data for all projects to R the clean and tidy!
+
+Chiara's sample list
+```{r}
+# Final curated list of samples, use this to compare your results to
+contex_real <- read_tsv("/Users/mattschechter/Desktop/MarMic/msc_thesis/matt_msc/metadata/chiaras_samples.txt", col_names = FALSE) %>%
+  rename(sample_ID = "X1")
+```
+
+GOS
+```{r}
+# upload raw data
+#####################################
+# GOS data upload
+#####################################
+
+# upload raw data
+GOS_contexual_data <- read_csv("/Users/mattschechter/Desktop/MarMic/msc_thesis/matt_msc/metadata/CAM_PROJ_GOS.csv", col_names = TRUE) %>%
+  rename(sample_ID = SAMPLE_NAME, latitude = LATITUDE, longitude = LONGITUDE, depth = SITE_DEPTH, temperature = "temperature - (C)", salinity = "salinity - (psu)")
+
+# Removing sample redundancy from GOS
+# take mean of repeated sample data
+GOS.numeric <- GOS_contexual_data %>%
+  group_by(sample_ID) %>%
+  select_if(is.numeric) %>%
+  summarise_all(mean)
+
+# only take one string from repeated sample data
+GOS.character <- GOS_contexual_data %>%
+  dplyr::select(-BIOMATERIAL_NAME, -MATERIAL_ACC, -SITE_NAME, -LIBRARY_ACC) %>%
+  select_if(is.character) %>%
+  group_by(sample_ID) %>%
+  unique
+
+# Join two lists of non-redundant GOS data
+GOS_contexual_data_1 <- inner_join(GOS.character, GOS.numeric, "sample_ID")
+
+# remove unsequenced samples
+GOS_unsequenced <- read_tsv("/Users/mattschechter/Desktop/MarMic/msc_thesis/matt_msc/metadata/GOS_samples_unsequenced.txt", col_names = TRUE) %>%
+    rename(sample_ID = "label")
+
+# How many unsequenced samples are found in the set?
+GOS_unsequenced$label %in% GOS_contexual_data_1$sample_ID %>% length()
+
+# If there are, filter them out
+GOS_contexual_data_2 <- GOS_contexual_data_1 %>% anti_join(GOS_unsequenced)
+
+# How many of these samples are found in Chiaras set?
+GOS_contexual_data_2$sample_ID %in% contex_real$X1
+
+# If there are remove them
+# as Chiara about how to do this
+GOS_contexual_data_3 <- GOS_contexual_data_2 %>% anti_join(contex_real %>% filter(grepl("GS", sample_ID)))
+
+
+GOS_contexual_data_3 <- GOS_contexual_data_2 %>%
+mutate(project = "GOS") %>%
+  filter(!is.na(latitude)) # removed a strange row with a label without data
+
+# Final check to see if your set matches Chiara's set
+GOS_contexual_data_3$sample_ID %in% contex_real$sample_ID
+############################################################# 
+```
+
+# Malaspina
+Changes were made to the titles of columns with aspects that could not be uploaded to R from Malaspina_Metadata_20170703.txt and made to Malaspina_Metadata_20170703_ed.txt. These are the header changes:
+- Nº OF REPLICATE -> # OF REPLICATE
+- Temp (°C) -> Temp
+```{r}
+#####################################
+# Malaspina data upload
+#####################################
+# Upload
+Malaspina_contexual_data <- read_tsv("/Users/mattschechter/Desktop/MarMic/msc_thesis/matt_msc/metadata/Malaspina_Metadata_20170703_ed.txt", col_names = TRUE) %>%
+  rename(sample_ID = "Code MP####", latitude = Lat, longitude = Long, depth = "DEPTH Megafile", temperature = "Temp", salinity = "Sal (PSU)") %>%
+  dplyr::select(-Project) %>%
+  mutate(project = "Malaspina")
+
+Malaspina_header_corrections <- read_tsv("/Users/mattschechter/Desktop/MarMic/msc_thesis/matt_msc/metadata/malaspina_header_corrections.txt", col_names = TRUE) %>% dplyr::select("contex", "orf") %>% drop_na()
+
+# Add "MP" to every sample_ID
+Malaspina_contexual_data$sample_ID <- paste0("MP", Malaspina_contexual_data$sample_ID)
+
+# Headers that do not need to be corrected
+Malaspina_contexual_data_1 <- Malaspina_contexual_data %>% filter(sample_ID %in% contex_real$sample_ID)
+ 
+# Headers that need to be changed
+Malaspina_contexual_data_2 <- Malaspina_contexual_data %>% filter(!sample_ID %in% contex_real$sample_ID)
+
+# Replace headers that need to be changed with headers that match ORFs
+Malaspina_contexual_data_3 <- Malaspina_contexual_data_2 %>% mutate(sample_ID = plyr::mapvalues(x = sample_ID, from = Malaspina_header_corrections$contex, to = Malaspina_header_corrections$orf))
+
+# Bind rows headers that did not need to be changed and headers that were corrected
+Malaspina_contexual_data_4 <- bind_rows(Malaspina_contexual_data_1, Malaspina_contexual_data_3)
+```
+
+TARA
+Changes made from original TARA_metadata_pangaea.xlsx -> TARA_metadata_pangaea_ed.txt
+- removed "From http://doi.pangaea.de/10.1594/PANGAEA.853810" from first line
+- Tpot [°C] -> Tpot [degreesC]
+- 2 identical columns of OXYGEN [µmol/kg] (calculated from sensors calib...) -> deleted 1
+- OXYGEN [µmol/kg] (calculated from sensors calib...) -> OXYGEN_1 [micromol/kg]
+- OXYGEN [µmol/kg] (calculated from sensors calib...) -> OXYGEN_2 [micromol/kg]
+- NO3 [µmol/l] -> NO3 [micromol/l]
+- [NO2]- [µmol/l] -> [NO2]- [micromol/l]
+- PO4 [µmol/l] -> PO4 [micromol/l]
+- NO3+NO2 [µmol/l] -> NO3+NO2 [micromol/l]
+- Si(OH)4 [µmol/l] -> Si(OH)4 [micromol/l]
+- Chl a [mg/m**3] (calculated from sensors calib...) -> Chl a [mg/m**3]_1
+- Chl a [mg/m**3] (calculated from sensors calib...) -> Chl a [mg/m**3]_2
+- beta470 [m/sr] (in the selected environmental...) -> beta470 [m/sr]_1
+- beta470 [m/sr] (in the selected environmental...) -> beta470 [m/sr]_2
+- beta470 [m/sr] (in the selected environmental...) -> beta470 [m/sr]_3
+- bb470 [1/m] -> bb470 [1/m]_1
+- bb470 [1/m] -> bb470 [1/m]_2
+- Depth max Brunt V√§is√§l√§ freq [m] -> Depth max Brunt freq [m]
+- SST grad h [°C/100 km] -> SST grad h [degreesC/100 km]
+```{r}
+# Upload and clean TARA
+TARA_contexual_data <- read_tsv("/Users/mattschechter/Desktop/MarMic/msc_thesis/matt_msc/metadata/TARA_metadata_pangaea_ed.txt", col_names = TRUE) %>%
+  mutate(project = "TARA") %>%
+  rename(sample_ID = "ena_read_no", latitude = latitude_verb, longitude = longitude_verb, depth = "depth_verb", temperature = "Tpot [degreesC]", salinity = "Sal", oxygen = "OXYGEN_1 [micromol/kg]", sampleID_tara = SampleID) 
+
+TARA_contexual_data_1 <- TARA_contexual_data %>% filter(sample_ID %in% contex_real$sample_ID)
+
+# load Halpern data for TARA
+load("/Users/mattschechter/Desktop/MarMic/msc_thesis/matt_msc/metadata/Halpern/halpern_data.Rda")
+
+TARA_contexual_data_1 <- TARA_contexual_data_1 %>% left_join(out_rescaled_2013 %>% rename("sample_ID" = label))
+
+# There should still be 242 samples
+TARA_contexual_data_1 %>% dim()
+
+# There should by only 63 prok + SRF samples with Halpern data
+TARA_contexual_data_1 %>% select(sample_ID, global_cumul_impact_2013_all_layers_2013_5kms_mean) %>% drop_na() %>% dim()
+```
+
+OSD
+```{r}
+# Upload and clean OSD
+
+# These samples have been removed from the OSD data set: (OSD10_2014-06-21_1m_NPL022,
+#                                                         OSD18_2014-06-20_75m_NPL022,
+#                                                         OSD72_2014-07-21_0.8m_NPL022, 
+#                                                         OSD96_2014-06-21_0m_NPL022, 
+#                                                         OSD168_2014-06-21_2m_NPL022)
+
+OSD_contexual_data <- read_tsv("/Users/mattschechter/Desktop/MarMic/msc_thesis/matt_msc/metadata/osd2014_metadata_18-01-2017.tsv", col_names = TRUE) %>%
+  mutate(project = "OSD") %>%
+  rename(sample_ID = "label", latitude = start_lat, longitude = start_lon, depth = "water_depth", temperature = "water_temperature", salinity = "salinity")
+
+OSD_header_corrections <- read_tsv("/Users/mattschechter/Desktop/MarMic/msc_thesis/matt_msc/metadata/OSD_header_corrections.txt", col_names = TRUE) %>% dplyr::select("contex", "orf") %>% drop_na()
+
+OSD_headerstoberemoved <- c("OSD10_2014-06-21_1m_NPL022","OSD18_2014-06-20_75m_NPL022","OSD72_2014-07-21_0.8m_NPL022","OSD96_2014-06-21_0m_NPL022","OSD168_2014-06-21_2m_NPL022")
+
+# there should be a false for each header to be removed
+OSD_headerstoberemoved %in% OSD_contexual_data$sample_ID
+
+# Headers that do not need to be changed
+OSD_contexual_data_1 <- OSD_contexual_data %>% filter(sample_ID %in% contex_real$sample_ID)
+
+# Headers that do need to be changed
+OSD_contexual_data_2 <- OSD_contexual_data %>% filter(!sample_ID %in% contex_real$sample_ID)
+
+# Replace headers that need to be changed with headers that match ORFs
+OSD_contexual_data_3 <- OSD_contexual_data_2 %>% mutate(sample_ID = plyr::mapvalues(x = sample_ID, from = OSD_header_corrections$contex, to = OSD_header_corrections$orf))
+
+# Bind rows headers that did not need to be changed and headers that were corrected
+OSD_contexual_data_4 <- bind_rows(OSD_contexual_data_1, OSD_contexual_data_3)
+
+
+# cannot find this... look into it
+#OSD_header_corrections <- read_tsv("~/Desktop/msc/msc_git/databases/ORF_headers/OSD_header_correction.txt", col_names = TRUE)
+
+#OSD_contexual_data$sample_ID <- plyr :: mapvalues(OSD_contexual_data$sample_ID, from = OSD_header_corrections$contextual_data, to = OSD_header_corrections$ORF)
+############################################################
+
+#chiaras
+#OSD_contexual_data_1 <- OSD_contexual_data %>% filter(sample_ID %in% contex_real$sample_ID)
+```
+
+Add Longhurst Province data
+```{r}
+# get ecoregions
+library(rgdal)
+library(raster) 
+# for shapefiles, first argument of the read/write/info functions is the
+# directory location, and the second is the file name without suffix
+
+# optionally report shapefile details
+ogrInfo(dsn = path.expand("/Users/mattschechter/Desktop/MarMic/msc_thesis/matt_msc/metadata/longhurst_v4_2010/Longhurst_world_v4_2010.shp"), layer = "Longhurst_world_v4_2010")
+
+
+regions <- readOGR(dsn = path.expand("/Users/mattschechter/Desktop/MarMic/msc_thesis/matt_msc/metadata/longhurst_v4_2010/Longhurst_world_v4_2010.shp"), layer = "Longhurst_world_v4_2010")
+
+#let's see the map
+#plot(regions, axes=TRUE, border="gray")
+
+# Function to add Longhurst ecoregion and province
+getRegionalInfo  <- function(lat1, long1){
+   #lat1 <- c(50.09444)
+    #long1 <- c(-127.5589)
+  
+  
+  #first, extract the co-ordinates (x,y - i.e., Longitude, Latitude)
+  coords <- cbind(long1, lat1)
+  
+  FB.sp <- SpatialPointsDataFrame(coords,data.frame(value = c(4)))
+  
+  proj4string(FB.sp) <- CRS("+proj=longlat +datum=WGS84 +no_defs")
+  
+  #plot(regions)
+  #plot(FB.sp, add=T)
+  
+  
+  dsdat <- over(regions, FB.sp, add=T, fn = base::mean) 
+  
+  ret <- data.frame(ProvCode = regions$ProvCode[which(dsdat$value==4)],
+                    ProvDescr = regions$ProvDescr[which(dsdat$value==4)])
+  
+  if(nrow(ret)==0) ret <- data.frame(ProvCode = NA,
+                                     ProvDescr = NA)
+  return(ret)
+  
+}
+
+# Name empty lists for each dataset
+eco_regions_OSD <- vector(mode = "list")
+
+eco_regions_TARA <- vector(mode = "list")
+
+eco_regions_GOS <- vector(mode = "list")
+
+eco_regions_Malaspina <- vector(mode = "list")
+
+
+
+# populate the lists with province and ecoregion
+for (i in 1:dim(OSD_contexual_data)[1]){
+  lat <- OSD_contexual_data[i,]$latitude
+  lon <- OSD_contexual_data[i,]$longitude
+  eco_regions_OSD[[i]] <- cbind(OSD_contexual_data[i,]$sample_ID, getRegionalInfo(lat, lon))
+}
+
+for (i in 1:dim(TARA_contexual_data_1)[1]){
+  lat <- TARA_contexual_data_1[i,]$latitude
+  lon <- TARA_contexual_data_1[i,]$longitude
+  eco_regions_TARA[[i]] <- cbind(TARA_contexual_data_1[i,]$sample_ID, getRegionalInfo(lat, lon))
+}
+
+for (i in 1:dim(GOS_contexual_data_3)[1]){
+  lat <- GOS_contexual_data_3[i,]$latitude
+  lon <- GOS_contexual_data_3[i,]$longitude
+  eco_regions_GOS[[i]] <- cbind(GOS_contexual_data_3[i,]$sample_ID, getRegionalInfo(lat, lon))
+}
+
+for (i in 1:dim(Malaspina_contexual_data_4)[1]){
+  lat <- Malaspina_contexual_data_4[i,]$latitude
+  lon <- Malaspina_contexual_data_4[i,]$longitude
+  eco_regions_Malaspina[[i]] <- cbind(Malaspina_contexual_data_4[i,]$sample_ID, getRegionalInfo(lat, lon))
+}
+
+
+
+# Bind data
+# adding Longhurst to OSD
+OSD_contexual_data_1 <- bind_rows(eco_regions_OSD) %>% 
+  as_tibble() %>%
+  rename(label = "OSD_contexual_data[i, ]$sample_ID", ecoregion = ProvCode, province = ProvDescr) %>%
+  left_join(OSD_contexual_data %>% rename("label" = "sample_ID")) %>%
+  rename(sample_ID = label)
+
+# adding Longhurst to TARA
+TARA_contexual_data_2 <- bind_rows(eco_regions_TARA) %>% 
+  as_tibble() %>%
+  rename(label = "TARA_contexual_data_1[i, ]$sample_ID", ecoregion = ProvCode, province = ProvDescr) %>%
+  left_join(TARA_contexual_data_1 %>% rename("label" = "sample_ID")) %>%
+  rename(sample_ID = label)
+
+# adding Longhurst to Malaspina
+Malaspina_contexual_data_5 <- bind_rows(eco_regions_Malaspina) %>% 
+  as_tibble() %>%
+  rename("label" = "Malaspina_contexual_data_4[i, ]$sample_ID", ecoregion = ProvCode, province = ProvDescr) %>%
+  left_join(Malaspina_contexual_data_4 %>% rename("label" = "sample_ID")) %>%
+  rename(sample_ID = label)
+
+# adding Longhurst to GOS
+GOS_contexual_data_4 <- bind_rows(eco_regions_GOS) %>% 
+  as_tibble() %>%
+  rename("label" = "GOS_contexual_data_3[i, ]$sample_ID", ecoregion = ProvCode, province = ProvDescr) %>%
+  left_join(GOS_contexual_data_3 %>% rename("label" = "sample_ID")) %>%
+  rename(sample_ID = label)
+```
+
+Add Halpern data
+```{r}
+# extraction not working
+# Antonio extracted the data for TARA samples, this was joined in the TARA section above
+
+#================================================================================
+#STEP 1: unzip files
+#================================================================================
+## set dir
+setwd("~/Desktop/matt_msc/metadata_1/Halpern/ ")
+## list all files for 2008
+
+files_rescaled_2013 <- list.files(path = "~/Desktop/matt_msc/metadata_1/Halpern/")
+print(files_rescaled_2013)
+
+
+#================================================================================
+#STEP 2
+#================================================================================
+library(proj4)
+library(tidyverse)
+library(raster)
+#my_db<- src_postgres(host = "localhost", port = 5432, dbname = "osd_analysis", options = "-c search_path=osd_analysis")
+#osd2014_amp_mg_intersect <- tbl(my_db, "osd2014_amp_mg_intersect") %>%
+  collect(n = Inf)
+#osd2014_metadata <- read_tsv("~/ownCloud/OSD_paper/OSD-GC/data/osd2014_metadata_18-01-2017.tsv",
+                             col_names = TRUE, trim_ws = TRUE,
+                             col_types = list(mrgid = col_character(), biome_id = col_character(),
+                                              feature_id = col_character(),material_id = col_character()))
+
+#osd2014_metadata_mg <- osd2014_metadata %>% filter(label %in% osd2014_amp_mg_intersect$label)
+#sc <- cbind(long=osd2014_metadata_mg$start_lon, lat=osd2014_metadata_mg$start_lat)                                #(long,lat)
+sc <- contexual_data_all %>% filter(grepl("TARA", sample_ID)) %>% dplyr::select(longitude, latitude)
+
+#r1 <- raster("~/Downloads/HALPERN/2013_scaled/tif_wgs84/global_cumul_impact_2013_all_layers_wgs84.tif")
+r <- raster("~/Desktop/matt_msc/metadata_1/Halpern/global_cumul_impact_2013_all_layers.tif")
+#change WGS84 to Mollweide
+oldproj <- "+proj=longlat +datum=WGS84 +no_defs"                                #WGS84
+newproj <- "+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs"   #Mollweide
+
+wgs.84    <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+# ESRI:54009 world mollweide projection, units = meters
+# see http://www.spatialreference.org/ref/esri/54009/
+mollweide <- "+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
+
+
+sp.points <- SpatialPoints(sc, proj4string=CRS(oldproj))
+sc <- spTransform(sp.points,CRS(newproj))
+
+#================================================================================
+#STEP 3 : values for 2008
+#================================================================================
+require(rgdal)
+library(raster)
+
+#sink("GlobalMinMaxForVar.txt")
+GlobalMinMaxForVar13 = data.frame(id=1:length(files_rescaled_2013), VarNames=gsub(".tif", "", files_rescaled_2013), minValue=rep(0,length(files_rescaled_2013)), maxValue=rep(0,length(files_rescaled_2013)))
+head(GlobalMinMaxForVar13)
+
+#OUTPUT FILE
+out_rescaled_2013 = data.frame(sample_ID=contexual_data_all$sample_ID, long=contexual_data_all$longitude, lat=contexual_data_all$latitude)
+m=ncol(out_rescaled_2013)
+
+#LOOP TO READ TIFF ONE BY ONE
+for(i in 1:length(files_rescaled_2013)) {
+
+  varName = gsub(".tif", "", files_rescaled_2013[i])
+  print(varName); flush.console()
+
+  ## Reading in a zip data file without unzipping it
+  #r <- raster(list.files$Name[2])
+  f <- paste("~/Desktop/matt_msc/metadata_1/Halpern/", files_rescaled_2013[i], sep = "")
+  r <- raster(f)
+  print(r); flush.console()
+
+  #Get min and max cell values from raster
+  #GlobalMinMaxForVar13$minValue[i] = cellStats(r, 'min')
+  #GlobalMinMaxForVar13$maxValue[i] = round(cellStats(r, max),3)
+
+  #LOOP TO READ TIFF ONE BY ONE
+  for(k in 1: nrow(sc@coords)){
+  progress(k, progress.bar = TRUE)
+
+    # if(k==16){
+    # out_rescaled_2013[k, m+1] =  "NA"; colnames(out_rescaled_2013)[m+1] = (paste(varName, "50kms_max", sep="_"))
+    # out_rescaled_2013[k, m+2] =  "NA"; colnames(out_rescaled_2013)[m+2] = (paste(varName, "50kms_min", sep="_"))
+    # out_rescaled_2013[k, m+3] =  "NA"; colnames(out_rescaled_2013)[m+3] = (paste(varName, "10kms_max", sep="_"))
+    # out_rescaled_2013[k, m+4] =  "NA"; colnames(out_rescaled_2013)[m+4] = (paste(varName, "10kms_min", sep="_"))
+    #} else{
+    ## MEHOD:1
+    ## Extract values from Raster objects
+    #equivalent to 0.5 degree or 50 kms approx radius
+    e0 = raster::extract(r, sc[k,], buffer = 100000, weights = TRUE, small = TRUE) %>% unlist
+
+    e1 = raster::extract(r, sc[k,], buffer = 50000, weights = TRUE, small = TRUE) %>% unlist
+
+    #equivalent to 0.1 degree or 10 kms approx
+    e2 = raster::extract(r, sc[k,], buffer = 10000, weights = TRUE, small = TRUE) %>% unlist
+
+    #equivalent to 0.1 degree or 10 kms approx
+    e3 = raster::extract(r, sc[k,], buffer = 5000, weights = TRUE, small = TRUE) %>% unlist
+
+    e4 = raster::extract(r, sc[k,], buffer = 1000, weights = TRUE, small = TRUE) %>% unlist
+    out_rescaled_2013[k, m+1] =  round(max(e1, na.rm=TRUE),3) ; colnames(out_rescaled_2013)[m+1] = (paste(varName, "2013_50kms_max", sep="_"))
+    out_rescaled_2013[k, m+2] =  round(mean(e1, na.rm=TRUE),3)   ; colnames(out_rescaled_2013)[m+2] = (paste(varName, "2013_50kms_mean", sep="_"))
+
+    out_rescaled_2013[k, m+3] =  round(max(e2, na.rm=TRUE),3) ; colnames(out_rescaled_2013)[m+3] = (paste(varName, "2013_10kms_max", sep="_"))
+    out_rescaled_2013[k, m+4] =  round(mean(e2, na.rm=TRUE),3)   ; colnames(out_rescaled_2013)[m+4] = (paste(varName, "2013_10kms_mean", sep="_"))
+
+    out_rescaled_2013[k, m+5] =  round(max(e3, na.rm=TRUE),3) ; colnames(out_rescaled_2013)[m+5] = (paste(varName, "2013_5kms_max", sep="_"))
+    out_rescaled_2013[k, m+6] =  round(mean(e3, na.rm=TRUE),3)   ; colnames(out_rescaled_2013)[m+6] = (paste(varName, "2013_5kms_mean", sep="_"))
+
+    out_rescaled_2013[k, m+7] =  round(max(e4, na.rm=TRUE),3) ; colnames(out_rescaled_2013)[m+7] = (paste(varName, "2013_1kms_max", sep="_"))
+    out_rescaled_2013[k, m+8] =  round(mean(e4, na.rm=TRUE),3)   ; colnames(out_rescaled_2013)[m+8] = (paste(varName, "2013_1kms_mean", sep="_"))
+
+    out_rescaled_2013[k, m+9] =  round(max(e0, na.rm=TRUE),3) ; colnames(out_rescaled_2013)[m+9] = (paste(varName, "2013_100kms_max", sep="_"))
+    out_rescaled_2013[k, m+10] =  round(mean(e0, na.rm=TRUE),3)   ; colnames(out_rescaled_2013)[m+10] = (paste(varName, "2013_100kms_mean", sep="_"))
+  m=ncol(out_rescaled_2013)
+  }
+}
+
+
+out_rescaled_2013_mean_long <- out_rescaled_2013 %>%
+  dplyr::select(osd_id, contains("mean")) %>%
+  dplyr::rename(label = osd_id) %>%
+  gather(ohi_variable, mean, -label) %>% tbl_df
+library(naturalsort)
+out_rescaled_2013_mean_long$ohi_variable <- factor(out_rescaled_2013_mean_long$ohi_variable, levels = unique(out_rescaled_2013_mean_long$ohi_variable) %>% naturalsort())
+
+for (i in 1:13){
+  fname <- paste("~/Downloads/halpern_mean_", i, ".pdf", sep = "")
+  pdf(fname, width = 14, height = 3)
+  p <- ggplot(out_rescaled_2013_mean_long, aes(mean)) +
+    geom_density(fill = "#333333", alpha = 0.8) +
+    ggforce::facet_wrap_paginate(~ohi_variable, scales = "free", ncol = 5, nrow = 1, page = i) +
+    theme_bw() +
+    theme(strip.text.x = element_text(size = 6),
+          axis.text = element_text(size = 8))
+  print(p)
+  dev.off()
+}
+
+out_rescaled_2013_mean_long %>%
+  filter(is.na(mean)) %>%
+  group_by(ohi_variable) %>%
+  count() %>%
+  separate("ohi_variable", c("variable", "buffer"), sep = "_2013_", remove = TRUE) %>%
+  mutate(buffer = gsub("s_mean", "", buffer)) %>%
+  complete(variable, buffer, fill = list(n = 0)) %>%
+  ggplot(aes(buffer, n)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = n), vjust = -0.2, size = 3) +
+  facet_wrap(~variable, scales = "free_x") +
+  scale_x_discrete(limits = c("1km", "5km", "10km", "50km", "100km")) +
+  theme_bw() +
+  xlab("Extraction buffer") +
+  ylab("# of NAs")
+
+
+library(maptools)
+data(wrld_simpl)
+wrldMoll <- spTransform(wrld_simpl, CRS(newproj))
+for(i in 1:length(files_rescaled_2013)) {
+
+  varName = gsub(".tif", "", files_rescaled_2013[i])
+  print(varName); flush.console()
+
+  ## Reading in a zip data file without unzipping it
+  #r <- raster(list.files$Name[2])
+  f <- paste("~/Downloads/HALPERN/2013_scaled/tif/", files_rescaled_2013[i], sep = "")
+  r <- raster(f)
+
+  fname <- paste("~/Downloads/halpern_", varName,".pdf", sep = "")
+  pdf(fname, width = 7, height = 5)
+  colors <- rev(colorRampPalette(c(brewer.pal(11, "Spectral"), "#FFFFFF"))(100))
+  plot(r, col = colors, axes = F, box = F)
+  plot(wrldMoll, col = "#E5E6E6", border = "#E5E6E6", add = TRUE, box = FALSE)
+  points(sc, cex = 0.5)
+  dev.off()
+}
+
+
+out_rescaled_2013_mean_long_5km <- out_rescaled_2013_mean_long %>%
+  mutate(ohi_variable = gsub("_2013_all_layers", "", ohi_variable)) %>%
+  mutate(ohi_variable = gsub("_2013_minus_2008", "diff", ohi_variable))
+
+
+out_rescaled_2013_mean_long_5km <- out_rescaled_2013_mean_long_5km %>%
+  separate("ohi_variable", c("variable", "buffer"), sep = "_2013_", remove = TRUE) %>%
+  mutate(buffer = gsub("s_mean", "", buffer))
+
+out_rescaled_2013_mean_long_5km$label <- factor(out_rescaled_2013_mean_long_5km$label, levels = st_100_order_terrestrial)
+out_rescaled_2013_mean_long_5km$buffer <- factor(out_rescaled_2013_mean_long_5km$buffer, levels = c("1km", "5km", "10km", "50km", "100km"))
+
+for (i in 1:13){
+  fname <- paste("~/Downloads/halpern_mean_", i, "_by_sample.pdf", sep = "")
+  pdf(fname, width = 14, height = 3)
+p <- ggplot(out_rescaled_2013_mean_long_5km, aes(label, mean)) +
+  geom_bar(stat = "identity") +
+  ggforce::facet_grid_paginate(variable~buffer, scales = "free", ncol = 5, nrow = 1, page = i) +
+  scale_x_discrete(limits = st_100_order_terrestrial) +
+  theme_bw() +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+  xlab("") +
+  ylab("Average")
+print(p)
+dev.off()
+}
+
+
+out_rescaled_2013_mean_long_lat_long <- out_rescaled_2013_mean_long %>%
+  filter(is.na(mean)) %>%
+  separate("ohi_variable", c("variable", "buffer"), sep = "_2013_", remove = TRUE) %>%
+  mutate(buffer = gsub("s_mean", "", buffer)) %>%
+  filter(buffer == "10km") %>%
+  left_join(osd2014_metadata)
+
+
+wmap<-map_data("world")
+
+pdf("~/Downloads/nas_map_10km.pdf", width = 21, height = 10)
+p <- ggplot(wmap, aes(x = long, y = lat)) +
+  geom_polygon(aes(group = group), fill = "#E5E6E6") +
+  geom_path(aes(group = group), colour = "#E5E6E6") +
+  geom_point(data = out_rescaled_2013_mean_long_lat_long, aes(x = start_lon, y = start_lat),
+             alpha = 0.8) +
+  xlab("") +
+  ylab("") +
+  coord_equal(ratio = 1)  +
+  facet_wrap(~variable) +
+  theme(panel.background = element_rect(fill = "white", colour = "white"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        legend.position = "top")
+print(p)
+dev.off()
+
+
+
+# Very low impact: <1.4
+# Low impact: 1.4-4.95
+# Medium impact: 4.95-8.47
+# Medium high impact: 8.47-12
+# High impact: 12-15.52
+# Very high impact: >15.52
+
+# Classify samples in impacted and non-impacted
+halpern_impact <- out_rescaled_2013_mean_long %>%
+  mutate(ohi_variable = gsub("_2013_all_layers", "", ohi_variable)) %>%
+  mutate(ohi_variable = gsub("_2013_minus_2008", "diff", ohi_variable)) %>%
+  filter(!is.na(mean)) %>%
+  separate("ohi_variable", c("variable", "buffer"), sep = "_2013_", remove = TRUE) %>%
+  mutate(buffer = gsub("s_mean", "", buffer)) %>%
+  filter(buffer == "5km", variable == "global_cumul_impact") %>%
+  mutate(class = ifelse(mean <= 1.4, "non-impacted", "impacted"))
+
+
+
+
+
+halpern_impact_class_min <- halpern_impact %>%
+  group_by(class) %>%
+  count %>%
+  dplyr::slice(which.min(n)) %>%
+  .$n
+
+sites_non_impact <- halpern_impact %>%
+  filter(class == "non-impacted") %>%
+  .$label %>%
+  droplevels()
+
+sites_rand <- halpern_impact %>%
+  filter(class == "impacted") %>%
+  .$label %>%
+  sample(.,halpern_impact_class_min) %>%
+  droplevels()
+```
+
+Add cluster abundance data
+```{r}
+# Read in data
+clstr_abun <- read_tsv("~/Desktop/MarMic/msc_thesis/matt_msc/metadata/k_gu_eu_kwp_abund_smpl_grouped.tsv", col_names = FALSE, progress = TRUE) %>% rename(clstr_ID = X1, category = X2, sample_ID = X3, abun = X4)
+```
+
+
+Upload contextual data to SQLite
+```{r}
+# Create SQL database
+db <- dbConnect(SQLite(), dbname = "~/Desktop/MarMic/msc_thesis/matt_msc/databases/contextual_data.db")
+
+# Print characteristics of database
+str(db)
+
+# add table to database
+# - conn = database you want to put the table into
+# - value equal R datatable you want to upload to SQLite
+dbWriteTable(conn = db, name = "OSD_contex", value = OSD_contexual_data_1)
+
+dbWriteTable(conn = db, name = "TARA_contex", value = TARA_contexual_data_2)
+
+dbWriteTable(conn = db, name = "Malaspina_contex", value = Malaspina_contexual_data_5)
+
+dbWriteTable(conn = db, name = "GOS_contex", value = GOS_contexual_data_4)
+
+dbWriteTable(conn = db, name = "clstr_abun", value = clstr_abun)
+
+
+# list all tables inside database db
+dbListTables(db)
+
+# Always disconnect from the SQL database
+dbDisconnect(db)
+```
+
+Query the database
+```{r}
+# Create SQL database
+db <- dbConnect(SQLite(), dbname = "~/Desktop/MarMic/msc_thesis/matt_msc/databases/contextual_data.db")
+
+# SQL query to make new table within the db
+dbFetch(dbSendQuery(db, "CREATE TABLE contextual_data_all AS 
+  SELECT sample_ID, project, longitude, latitude, ecoregion, province, depth, temperature, salinity FROM OSD_contex UNION 
+  SELECT sample_ID, project, longitude, latitude, ecoregion, province, depth, temperature, salinity FROM TARA_contex UNION 
+  SELECT sample_ID, project, longitude, latitude, ecoregion, province, depth, temperature, salinity FROM Malaspina_contex UNION
+  SELECT sample_ID,  project, longitude, latitude, ecoregion, province, depth, temperature, salinity FROM GOS_contex"))
+
+# Read a SQL table inside database db
+contexual_data_all <- dbReadTable(db, "contextual_data_all")
+
+# list all tables inside database db
+dbListTables(db)
+
+# Always disconnect from the SQL database
+dbDisconnect(db)
+```
+
