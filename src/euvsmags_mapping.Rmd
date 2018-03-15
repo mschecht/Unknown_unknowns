@@ -1,0 +1,41 @@
+---
+title: "Mapping EUs to TARA MAGs"
+output: html_notebook
+github_document: default
+---
+
+This document shows the pipeline for mapping the Environmental Unknowns components (EUs) to the refined, non-redundant metagenomic assembled genomes (MAGs) produce by Tom Delmont [here](http://merenlab.org/data/2017_Delmont_et_al_HBDs/). 
+
+## Preparing data
+```{bash}
+mkdir eus_vs_mags
+cd eus_vs_mags
+```
+
+Download and move [MAGs](https://figshare.com/articles/TARA-NON-REDUNDANT-MAGs/4902923) to working dir
+```{bash}
+mv ~/Desktop/NON_REDUNDANT_MAGs.tar.gz .
+
+tar -xvzf NON_REDUNDANT_MAGs.tar.gz
+```
+
+## Making MMSeqs profiles
+```{bash}
+mkdir marine_hmp_db_03112017_eu_hhm marine_hmp_db_03112017_eu_hhm.index
+
+cp /bioinf/projects/megx/UNKNOWNS/2017_11/classification/results/ffindex_data/marine_hmp_db_03112017_eu_hhm.ffdata marine_hmp_db_03112017_eu_hhm
+cp /bioinf/projects/megx/UNKNOWNS/2017_11/classification/results/ffindex_data/marine_hmp_db_03112017_eu_hhm.ffindex marine_hmp_db_03112017_eu_hhm.index
+
+
+/home/cvanni/opt/MMseqs2/bin/mmseqs convertprofiledb marine_hmp_db_03112017_eu_hhm/marine_hmp_db_03112017_eu_hhm.ffdata marine_hmp_db_03112017_eu_hhm_profileDB --threads 50
+```
+
+## Searching the EUs against the MAGS
+```{bash}
+mmseqs createdb TARA_non_redundant_MAGs_AA.fa.gz magsDB
+mmseqs search magsDB marine_hmp_db_03112017_eu_hhm_profileDB mag_results tmp -c 0.8 --cov-mode 0 -e 1e-5 --threads 64
+mmseqs convertalis magsDB marine_hmp_db_03112017_eu_hhm_profileDB mag_results mag_results.m8 --format-mode 2
+```
+
+## Parse and plot the results
+Script can be found [here](https://github.com/genomewalker/matt_msc/blob/master/src/eu_mags_mapping/euvsmags_plotting.Rmd)

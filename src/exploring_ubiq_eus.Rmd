@@ -1,0 +1,304 @@
+---
+title: "Confirming Ubiquitous EUs"
+output: html_notebook
+---
+
+This notebook shows the code for exploring the Ubiquitous EUs.
+
+Not related to the niche breadth analysis, we just use those that are found everywhere.
+
+## Exporting the clusters belonging to the components found in all samples
+
+```{r}
+super_cl <- read_tsv("/Users/ufo/Downloads/all_cluster_components.tsv", col_names = TRUE, trim_ws = TRUE) %>%
+  filter(component %in% clstrs_comp_eu_ubi) %>%
+  select(clstr_name) %>%
+  write_tsv(path = "~/Downloads/eu_core_comps.tsv", col_names = FALSE)
+```
+
+## Grab the concensus sequences for the EUs
+
+```{bash}
+~/opt/ffindex/bin/ffindex_get marine_hmp_db_03112017_eu_cons.ffdata marine_hmp_db_03112017_eu_cons.ffindex $(cat eu_core_comps.tsv) > eu_core_comps.fasta
+```
+
+## Search against antiFAM
+
+Are any of the ubiquitous EUs spurious? 
+
+```{bash}
+hmmsearch --cpu 32 -Z 441329 --domtblout eu_spur.tblout -o eu_spur.log AntiFam.hmm eu_core_comps.fasta
+```
+
+Parse the results: e-value > 1e-5 and coverage >= 0.6
+
+```{bash}
+grep -v '^#' eu_spur.tblout | awk '{print $4,$6,$1,$3,$13,$16,$17,$18,$19}' | sed 's/ /\t/g' | perl -e 'while(<>){chomp;@a=split;next if $a[-1]==$a[-2];push(@{$b{$a[2]}},$_);}foreach(sort keys %b){@a=@{$b{$_}};for($i=0;$i<$#a;$i++){@b=split(/\t/,$a[$i]);@c=split(/\t/,$a[$i+1]);$len1=$b[-1]-$b[-2];$len2=$c[-1]-$c[-2];$len3=$b[-1]-$c[-2];if($len3>0 and ($len3/$len1>0.5 or $len3/$len2>0.5)){if($b[4]<$c[4]){splice(@a,$i+1,1);}else{splice(@a,$i,1);}$i=$i-1;}}foreach(@a){print $_."\n";}}' | E=1e-5 perl -e 'while(<>){chomp;@a=split(/\t/,$_);if(($a[-1]-$a[-2])>80){print $_,"\t",($a[-3]-$a[-4])/$a[1],"\n" if $a[4]<$ENV{E};}else{print $_,"\t",($a[-3]-$a[-4])/$a[1],"\n" if $a[4]<$ENV{E};}}' | awk '$NF >= 0.6' > eu_ubiq_spurious_sign.tblout
+
+cut -f3 eu_ubiq_spurious_sign.tblout | sort -u > eu_ubiq_spurious_sign_ids.txt
+
+filterbyname.sh in=eu_core_comps.fasta out=eu_core_comps_no_spr.fasta names=eu_ubiq_spurious_sign_ids.txt include=f ignorejunk
+```
+
+## Search EUs against uniclust using HHblits
+
+Is there any remote homology?
+```{bash}
+~/opt/ffindex_mg/bin/ffindex_from_fasta -s eu_core_comps_no_spr.ffdata eu_core_comps_no_spr.ffindex eu_core_comps_no_spr.fasta
+
+mpirun -np ${NSLOTS} /home/mschecht/opt/ffindex_mg/bin/ffindex_apply_mpi \
+  /bioinf/home/mschecht/jackhmmer/eu_core_comps_no_spr.ff{data,index} -- hhblits.sh
+
+~/opt/ffindex_mg/bin/ffindex_build eu_core_comps_r.ffdata eu_core_comps_r.ffindex results/
+
+${OPENMPI_HOME}/bin/mpirun -np 16 ~/opt/ffindex_mg/bin/ffindex_apply_mpi -d eu_core_comps_parsed.ffdata -i eu_core_comps_parsed.ffindex eu_core_comps_r.ff{data,index} -- ./hh_parser.sh | pv -l | wc -l
+
+sed -e 's/\x0//g' eu_core_comps_parsed.ffdata | cut -f1 | sort -u > eu_core_comps_hom.ids
+filterbyname.sh in=eu_core_comps_no_spr.fasta out=eu_core_comps_no_spr_hom.fasta names=eu_core_comps_hom.ids include=f
+sed -e 's/\x0//g' eu_core_comps_parsed.ffdata | awk '!a[$1]++' | grep -i -c 'Uncharacterized\|Hypothetical'
+```
+
+## Kaiju
+
+Run Kaiju to see if any ubiquitous EUs can be assigned a taxonomy.
+
+Using _greedy_ mode for better sensitivity and precision.
+
+```{bash}
+./bin/kaiju -z 32 -t nodes.dmp -f kaiju_db_nr_euk.fmi -i ../eu_core_comps_no_spr_hom.fasta -o k.out -p -a greedy -e 5
+cut -f1 k.out | sort| uniq -c
+./bin/addTaxonNames -p -t nodes.dmp -n names.dmp -i k.out -o k.rep
+```
+
+## Results
+
+Initial: 6587  
+Antifam: 250  
+HHblits: 4823 (3811 have best hit as Hypothetical/Uncharacterized)  
+Kaiju: 81 classified  
+
+1433 with no traces in the DBs
+
+
+
+## Scripts needed for above
+
+hh_parser.sh
+```{bash}
+HHblits Remote homologies using HMM-HMM searches
+```
+
+hh_reader.py
+```{python}
+#!/usr/bin/env python
+
+"""
+Parser for hhr result files created with hhblits|hhsearch|hhalign -o <hhr_file>
+"""
+
+
+import sys
+from collections import namedtuple
+
+
+__author__ = 'Markus Meier (markus.meier@mpibpc.mpg.de)'
+__version__ = '1.0'
+__license__ = "GPL-3"
+
+
+hhr_alignment = namedtuple('hhr_alignment', ['query_id', 'query_length', 'query_neff',
+                                             'template_id', 'template_length', 'template_info',
+                                             'template_neff', 'query_ali', 'template_ali',
+                                             'start', 'end', 'probability', 'evalue', 'score',
+                                             'aligned_cols', 'identity', 'similarity', 'sum_probs'])
+
+
+class HHRFormatError(Exception):
+    def __init__(self, value):
+        self.value = "ERROR: " + value
+
+    def __str__(self):
+        return repr(self.value)
+
+
+def get_sequence_name(header):
+    name = header.replace(">", "").split()[0]
+    return name
+
+
+def parse_result(lines):
+    results = []
+
+    query_id = None
+    query_length = None
+    query_neff = None
+    query_seq = []
+    template_id = None
+    template_length = None
+    template_seq = []
+    template_info = None
+    query_start = None
+    query_end = None
+    template_start = None
+    template_end = None
+    probability = None
+    evalue = None
+    score = None
+    identity = None
+    similarity = None
+    template_neff = None
+    sum_probs = None
+    aligned_cols = None
+
+    skipped_ali_tags = ["ss_dssp", "ss_pred", "Consensus"]
+
+    is_alignment_section = False
+
+    for line in lines:
+        if(line.startswith("Query")):
+            query_id = line.split()[1]
+        elif(line.startswith("Match_columns")):
+            query_length = int(line.split()[1])
+        elif(line.startswith("Neff")):
+            query_neff = float(line.split()[1])
+        elif(is_alignment_section and (line.startswith("No") or line.startswith("Done!"))):
+            if query_start is not None:
+                result = hhr_alignment(query_id, query_length, query_neff,
+                                       template_id, template_length, template_info, template_neff,
+                                       query_seq, template_seq, (
+                                           query_start, template_start),
+                                       (query_end, template_end), probability, evalue, score,
+                                       aligned_cols, identity, similarity, sum_probs)
+                results.append(result)
+            template_id = None
+            template_info = None
+            query_seq = []
+            template_seq = []
+                query_start = None
+            query_end = None
+            template_start = None
+            template_end = None
+        elif(line.startswith("Probab")):
+            tokens = line.split()
+            probability = float(tokens[0].split("=")[1])
+            evalue = float(tokens[1].split("=")[1])
+            score = float(tokens[2].split("=")[1])
+            aligned_cols = int(tokens[3].split("=")[1])
+            identity = float(tokens[4].split("=")[1].replace("%", "")) / 100.0
+            similarity = float(tokens[5].split("=")[1])
+            sum_probs = float(tokens[6].split("=")[1])
+            if(len(tokens) > 7):
+                template_neff = float(tokens[7].split("=")[1])
+            continue
+        elif(line.startswith(">")):
+            is_alignment_section = True
+            template_id = line[1:].split()[0]
+            template_info = line
+        elif(line.startswith("Q")):
+            tokens = line.split()
+            if(tokens[1] in skipped_ali_tags):
+                continue
+
+            try:
+                token_2 = tokens[2].replace("(", "").replace(")", "")
+                token_2 = int(token_2)
+            except:
+                raise HHRFormatError(("Converting failure of start index ({}) "
+                                      "of query alignment").format(tokens[2]))
+
+            if query_start is None:
+                query_start = token_2
+            query_start = min(query_start, token_2)
+
+            try:
+                token_4 = tokens[4].replace("(", "").replace(")", "")
+                token_4 = int(token_4)
+            except:
+                raise HHRFormatError(("Converting failure of end index ({}) "
+                                      "of query alignment").format(tokens[4]))
+
+            if query_end is None:
+                query_end = token_4
+            query_end = max(query_end, token_4)
+            query_seq.append(tokens[3])
+        elif(line.startswith("T")):
+            tokens = line.split()
+            if(tokens[1] in skipped_ali_tags):
+                continue
+            template_seq.append(tokens[3])
+
+            try:
+                token_2 = tokens[2].replace("(", "").replace(")", "")
+                token_2 = int(token_2)
+            except:
+                raise HHRFormatError(("Converting failure of start index ({}) "
+                                      "of template alignment").format(tokens[2]))
+
+            if template_start is None:
+                template_start = token_2
+            template_start = min(template_start, token_2)
+
+            try:
+                token_4 = tokens[4].replace("(", "").replace(")", "")
+                token_4 = int(token_4)
+            except:
+                raise HHRFormatError(("Converting failure of end index ({}) "
+                                      "of template alignment").format(tokens[4]))
+
+            if template_end is None:
+                template_end = token_4
+            template_end = max(template_end, token_4)
+
+            try:
+                token_5 = tokens[4].replace("(", "").replace(")", "")
+                token_5 = int(token_5)
+            except:
+                raise HHRFormatError(("Converting failure of template length ({}) "
+                                      "in template alignment").format(tokens[5]))
+            template_length = token_5
+                if(template_id is not None and query_start is not None):
+        result = hhr_alignment(query_id, query_length, query_neff,
+                               template_id, template_length, template_info, template_neff,
+                               "".join(query_seq), "".join(
+                                   template_seq), (query_start, template_start),
+                               (query_end, template_end), probability, evalue, score,
+                               aligned_cols, identity, similarity, sum_probs)
+        results.append(result)
+
+    return results
+
+
+def read_result(input_file):
+    with open(input_file) as fh:
+        lines = fh.readlines()
+        return parse_result(lines)
+
+
+def main():
+    counter = 0
+    for result in read_result(sys.argv[1]):
+
+        sys.stdout.write(result.query_id + "\t" + str(result.probability) + "\t" +
+                         str(result.evalue) + "\t" +
+                         result.template_info)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+hhblits.sh
+```{bash}
+#!/bin/bash
+GCC_HOME=/bioinf/software/gcc/gcc-4.9
+OPENMPI_HOME=/bioinf/software/openmpi/openmpi-1.8
+PATH=${GCC_HOME}/bin:${OPENMPI_HOME}/bin:$PATH
+export PATH
+
+LD_LIBRARY_PATH=${GCC_HOME}/lib64:${OPENMPI_HOME}/lib:"${HOME}"/opt/igraph-0.7.1_mg/lib:$LD_LIBRARY_PATH
+export HHLIB=$HOME/opt/hhsuite_mg
+export PATH=$PATH:$HHLIB/bin:$HHLIB/scripts
+
+hhblits -i stdin -o /bioinf/home/afernand/SANDBOX/jackhmmer/results/"${FFINDEX_ENTRY_NAME}".hhr -cpu 2 -n 2 -d /bioinf/home/afernand/SANDBOX/uniclust/uniclust30_2017_10/uniclust30_2017_10
+```
+

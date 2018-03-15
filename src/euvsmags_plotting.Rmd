@@ -1,0 +1,201 @@
+---
+title: "EUs vs Toms MAGs parsing and plotting"
+output: html_notebook
+github_document: default
+---
+
+This notebook the results of the `euvsmags_mapping.Rmd`.
+
+## Set Environment
+```{r}
+library(tidyverse)
+library(scales)
+```
+
+Download files from MAGs produce by Tom Delmont [here](http://merenlab.org/data/2017_Delmont_et_al_HBDs/).
+```{bash}
+cd ~/Downloads
+
+wget http://files.metagenomics.eu/TARA_non_redundant_MAGs_AA.fa.gz
+wget http://files.metagenomics.eu/TARA_MAGs_v3_metadata.txt
+wget http://files.metagenomics.eu/orf2mag.tsv.gz
+wget http://files.metagenomics.eu/tara_delmont_taxids.csv
+```
+
+## Read in files
+```{r}
+# Results of mapping EUs to Toms MAGs
+m_vs_u <- read_tsv("~/Downloads/mag_results.m8", col_names = FALSE, progress = TRUE) %>%
+  select(X1, X2, X3, X11) %>%
+  rename(gene_callers_id = X1, clstr_ID = X2, id = X3, evalue = X11) %>% # I do not known what "id" is!!!!!
+  mutate(gene_callers_id = as.character(gene_callers_id),  unk_id = as.character(clstr_ID)) %>%
+  filter(evalue <= 1e-25)
+
+# Cluster components
+eu_comp <- data.table::fread(input = "~/Downloads/all_cluster_components.tsv", header = TRUE, sep = "\t") %>%
+  rename(clstr_ID = clstr_name) %>%
+  separate(component, "class", sep = "_", extra = "drop", remove = FALSE) %>%
+  filter(class == "eu") %>%
+  dplyr::select(-class) %>%
+  as_tibble()
+
+# TARA surface only cluster components
+eu_comp_tara_srf <- data.table::fread(input = "~/Downloads/all_cluster_components.tsv", header = TRUE, sep = "\t") %>%
+  rename(clstr_ID = clstr_name) %>%
+  separate(component, "class", sep = "_", extra = "drop", remove = FALSE) %>%
+  filter(component %in% clstrs_tps_stats_f2$component) %>%
+  filter(class == "eu") %>%
+  dplyr::select(-class) %>%
+  as_tibble()
+
+# Niche breadth results
+load("~/Downloads/niche_ALL_results_20180207.Rda")
+nicheB <- results %>% 
+  dplyr::select(component, sign) %>%
+  separate(component, "class", sep = "_", extra = "drop", remove = FALSE) %>%
+  filter(class == "eu") %>%
+  dplyr::select(-class) %>%
+  unique()
+
+nicheB$sign <- as.character(nicheB$sign)
+
+# Gene_callers_ID is a unique idenitfier for a contigs for ANVIO
+m_genes <- read_tsv("~/Downloads/orf2mag.tsv.gz", col_names = TRUE, progress = TRUE) %>%
+  select(gene_callers_id, contig) %>%
+  mutate(gene_callers_id = as.character(gene_callers_id))
+
+# MAG statistics
+mag_cdata <- read_tsv("~/Downloads/TARA_MAGs_v3_metadata.txt", col_names = TRUE)
+
+# MAG Taxonomy
+mag_tax <- read_csv("~/Downloads/tara_delmont_taxids.csv", col_names = FALSE) %>%
+  separate(X3,into = c("domain","phylum","class", "order", "family", "genus"), sep = ";", fill = "right", extra = "drop") %>%
+  rename(MAG=X1)
+```
+
+## Clean data
+```{r}
+# add components to results
+m_vs_u_comp <- m_vs_u %>% left_join(eu_comp)
+
+# Join components but only keep ones from srf
+m_vs_u_comp_srf <- m_vs_u %>% left_join(eu_comp_tara_srf) %>% drop_na()
+
+# Combine tables and clean MAG names
+# all
+m_vs_u_comp_mag <- m_vs_u_comp %>%
+  left_join(m_genes) %>%
+  tidyr::extract(contig, into = paste("V", 1:4, sep = ""), regex = "([[:alnum:]]+)_([[:alnum:]]+)_([[:alnum:]]+)_([[:alnum:]]+)") %>%
+  tidyr::unite(col = MAG, V1,V2,V3,V4, sep = "_", remove = TRUE) 
+# srf
+m_vs_u_comp_srf_mag <- m_vs_u_comp_srf %>%
+  left_join(m_genes) %>%
+  tidyr::extract(contig, into = paste("V", 1:4, sep = ""), regex = "([[:alnum:]]+)_([[:alnum:]]+)_([[:alnum:]]+)_([[:alnum:]]+)") %>%
+  tidyr::unite(col = MAG, V1,V2,V3,V4, sep = "_", remove = TRUE) 
+
+
+# add taxonomy
+# all
+m_vs_u_comp_mag_tax <- m_vs_u_comp_mag %>% left_join(mag_tax)
+# srf
+m_vs_u_comp_srf_mag_tax <- m_vs_u_comp_srf_mag %>% left_join(mag_tax)
+
+# Save
+save(m_vs_u_comp_srf_mag_tax, file = "~/Dropbox/Public/matt_msc/data/m_vs_u_comp_srf_mag_tax.RData")
+
+# How many ORFs does each MAG have
+mag_n_orfs <- m_genes %>%
+  tidyr::extract(contig, into = paste("V", 1:4, sep = ""), regex = "([[:alnum:]]+)_([[:alnum:]]+)_([[:alnum:]]+)_([[:alnum:]]+)") %>%
+  unite(col = MAG, V1,V2,V3,V4, sep = "_", remove = TRUE) %>%
+  group_by(MAG) %>%
+  count() %>%
+  rename(n_orf = n)
+
+# 
+m_vs_u_comp_mag_n <- m_vs_u_comp_mag %>%
+  select(MAG, component) %>% # I think the unk_id is the gu_component number
+  unique() %>%
+  group_by(MAG) %>%
+  count() %>% # count how many GUs are in each MAG
+  ungroup() %>%
+  #tidyr::complete(uclass, MAG, fill = list(n = 0)) %>%
+  left_join(mag_n_orfs) %>% # add "# of ORFs" variable
+  mutate(prop = n/n_orf) %>% # prop = number of EU components : total ORF count
+  left_join(mag_tax) # add taxonomy to the MAG
+```
+## Let's answer some basic questions
+
+What percentage of EU components from the TARA Ocean surface, prokaryotic metagenomes mapped to TOM's MAGs?
+```{r}
+load("~/Downloads/clstrs_tara_f2.RData")
+(m_vs_u_comp %>% select(component) %>% unique() %>% count()/clstrs_tps_stats_f2 %>% select(component) %>% unique() %>% count()) %>% as.numeric() %>% percent()
+```
+91% of the EU components found in the TARA Ocean surface, prokaryotic metagenomes mapped to TOM's. This may imply that TOM's MAGs are very representative of the prokaryotic community in the surface ocean. 
+
+Check where the 10% thats missing are!
+
+Out of Tom's 953 MAGs from the TARA surface, prokaryotic samples, what percentage of the MAGs had EU components mapped to them?
+```{r}
+(m_vs_u_comp_mag %>% select(MAG) %>% unique() %>% count()/957) %>% as.numeric() %>% percent()
+```
+
+Get top 25 MAGs with the most EUs
+```{r}
+m_vs_u_mag_n_25 <- m_vs_u_mag_n %>%
+  dplyr::top_n(10, wt = n) %>% # n is the number of EUs components
+  .$MAG
+
+m_vs_u_mag_n %>% dplyr::top_n(10, wt = n) %>% # raw EU counts
+  arrange(desc(n))
+```
+...by proportion of EU components to total ORFs
+```{r}
+# This is more informative
+m_vs_u_mag_n %>% dplyr::top_n(10, wt = prop) %>% # proportion of EUs to ORFs
+  arrange(desc(prop))
+```
+Flavobacteriia and gamma/alpha proteobacteria have the highest EU component percentage in their contigs.
+
+
+What are the most represented Phylum of Tom's MAGs that have EUs that mapped to them?               
+```{r}
+m_vs_u_mag_n %>% group_by(phylum) %>% count %>% arrange(desc(nn))
+```
+
+Of the MAGs with "NA" pylum, what are the top 25 in terms of highest proportion of EUs to ORFs?
+```{r}
+m_vs_u_mag_n %>% filter(is.na(phylum)) %>% dplyr::top_n(25, wt = prop) %>% arrange(desc(n)) 
+```
+Check if this candidate phylum radiation!!!!!!!!!!!!!!
+
+## Plot
+What are the MAGs with the most EUs?
+```{r}
+# factors
+#m_vs_u_mag_n$MAG <- factor(m_vs_u_mag_n$MAG, levels = (m_vs_u_mag_n %>% arrange(desc(n)))) 
+
+# Plot MAGs with the most EU content
+ggplot((m_vs_u_mag_n %>% filter(MAG %in% m_vs_u_mag_n_25)), aes(MAG, n, color = class)) +
+  geom_bar(stat = "identity") +
+  theme_light() +
+  coord_flip() +
+  xlab("") +
+  ylab("# hits") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Visualize histogram of 
+```{r}
+# Calculate histograms
+all <- ggplot(m_vs_u_mag_n, aes(prop)) +
+  geom_histogram(alpha = 0.5, fill = "#2E3239") +
+  theme_light() +
+  ylab("Frequency") +
+  xlab("Proportion of unknown ORFs") +
+  scale_x_continuous(labels = scales::percent)
+
+# Plot them
+ggpubr::ggarrange(all, eupc, nrow = 1, ncol = 3)
+```
+Most of the the MAGs have a low percentage of EUs in their genomic content.
+
