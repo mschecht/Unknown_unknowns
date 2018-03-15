@@ -1,0 +1,987 @@
+---
+title: "Component abundance data filtering"
+author: "Matthew Schechter"
+output: html_document
+github_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+This notebook shows the filtering steps for the component abundance data found in the TARA Oceans metagenomes.
+
+To reproduce this workflow, upload `marine_hmp_abund_smpl_grouped.tsv.gz` and `all_cluster_components.tsv` from the figshare (10.6084/m9.figshare.5979658). 
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## 1. Set environment
+```{r}
+# Set working directory to matt_msc/src/eco_analysis/TARA/
+#setwd("/scratch/mschecht/matt_msc/src/eco_analysis/TARA/")
+
+# load libraries
+library(tidyverse)
+library(data.table)
+library(pbmcapply)
+library(RSQLite)
+library(ggpubr)
+library(plotly)
+library(MASS)
+library(GGally)
+library(scales)
+library(forcats)
+```
+
+## 2. Read in cluster abundance data
+Here we will read in the raw cluster abundance data, then aggregate it to the component data. 
+```{r}
+# Protein cluster abun per sample
+clstrs_abun <- data.table::fread(input = "gunzip -c /bioinf/projects/megx/UNKNOWNS/2017_11/classification/marine_hmp_abund_smpl_grouped.tsv.gz", 
+                                 sep = "\t", 
+                                 header = FALSE) %>% 
+  as_tibble() %>% 
+  dplyr::rename(clstr_ID = V1, category = V2, sample_ID = V3, abun = V4) %>%
+  filter(grepl("TARA", sample_ID))
+
+# Cluster components
+all_comp <- data.table::fread(input = "/bioinf/projects/megx/UNKNOWNS/Matt/all_cluster_components.tsv", header = TRUE, sep = "\t") %>%
+  rename(clstr_ID = clstr_name) %>%
+  separate(component, "class", sep = "_", extra = "drop", remove = FALSE)
+
+# join
+clstrs_tara_comp <- clstrs_abun %>% 
+  filter(grepl("TARA", sample_ID)) %>%
+  left_join(all_comp) %>%
+  tbl_df()
+
+# Calculate component abundance
+clstrs_tara_comp_agg <- clstrs_tara_comp %>%
+  group_by(sample_ID, component) %>%
+  summarise(abun = sum(abun)) %>% 
+  separate(component, "class", sep = "_", extra = "drop", remove = FALSE)
+
+# What percentage does each cluster category represent?
+table(all_comp$class) %>% prop.table()
+table(clstrs_tara_comp_agg$class) %>% prop.table()
+```
+| Cluster Category | Percentage |
+|------------------|------------|
+| EU               | 5.15%      |
+| GU               | 25.2%      |
+| Total Unknowns   | 30.35%     |
+| Knowns           | 51.6%      |
+| Knows w/o pfam   | 18.1%      |
+| Total knowns     | 69.7%      |
+
+## 3. Read in and filter contextual data
+TARA contextual  was stored in a SQLite database to maintain data integrity, reduce storage, and lower information retrieval costs. 
+```{r}
+# connect to contextual data database and upload TARA metadata.
+# - drv = typle of databse connection
+# - dbname = path to database
+db <- RSQLite::dbConnect(drv = SQLite(), dbname = "../../../databases/contextual_data.db")
+
+# list contents of database
+dbListTables(db)
+
+# extract TARA Oceans contextual data from database
+TARA_contex <- as_tibble(dbReadTable(db, "TARA_contex"))
+
+#clstrs <- as_tibble(dbReadTable(db, "clstr_abun"))
+
+# Disconnect from db
+dbDisconnect(db)
+
+head(TARA_contex)
+```
+
+The TARA Oceans project took samples at many depths and with different filter sizes. Here the contextual data is filtered into different subset representing different filter fractions and depths.
+
+Separate out the contextual data into different set needed for different analyses down the
+```{r}
+# add filter_fraction and depth_category
+TARA_contex <- TARA_contex %>%
+   mutate(filter_fraction = case_when(grepl("<-0.22", sample_ID)    ~ "viral",
+                                      grepl("0.1-0.22", sample_ID)  ~ "girus_prok",
+                                      grepl("0.22-0.45", sample_ID) ~ "girus_prok",
+                                      grepl("0.45-0.8", sample_ID)  ~ "girus_prok",
+                                      grepl("0.22-1.6", sample_ID)  ~ "prok",
+                                      grepl("0.22-3", sample_ID)    ~ "prok")) %>%
+  mutate(depth_category = case_when( grepl("SRF", sample_ID)  ~ 'SRF',
+                                     grepl("DCM", sample_ID) ~ 'DCM',
+                                     grepl("MES", sample_ID) ~ 'MES'))
+
+# Filter for prokaryotic fraction of samples
+TARA_contex_1 <- TARA_contex %>% 
+  filter(grepl("0.22-1.6|0.22-3", sample_ID)) %>%
+  as_tibble()
+
+TARA_contex_2 <- TARA_contex_1 %>% filter(grepl("MIX", sample_ID))
+
+TARA_contex_3 <- TARA_contex_1 %>% filter(!sample_ID %in% TARA_contex_2$sample_ID) # only the prokaryotic samples
+nrow(TARA_contex_3) 
+
+# Filter for surface fraction
+TARA_contex_4 <- TARA_contex_3 %>% filter(depth_category == "SRF") # only prokaryotic surface samples
+nrow(TARA_contex_4) # Should be 63 rows
+
+# Filter for viral all depths
+TARA_contex_viral_all <- TARA_contex %>% filter(filter_fraction == "viral") # viral all depths
+nrow(TARA_contex_viral_all)
+
+# Filter for viral surface
+TARA_contex_viral_srf <- TARA_contex %>% filter(filter_fraction == "viral" & depth_category == "SRF") # viral surface depths
+nrow(TARA_contex_viral_srf)
+```
+
+What percentage of all samples the different fractions?
+```{r}
+# Prokaryotic all depths
+percent(TARA_contex_3$sample_ID %>% unique() %>% length()/TARA_contex$sample_ID %>% unique() %>% length())
+
+# Prokaryotic, surface samples
+percent(TARA_contex_4$sample_ID %>% unique() %>% length()/TARA_contex$sample_ID %>% unique() %>% length())
+
+# Viral all depths
+percent(TARA_contex_viral_all$sample_ID %>% unique() %>% length()/TARA_contex$sample_ID %>% unique() %>% length())
+
+# Viral surface
+percent(TARA_contex_viral_srf$sample_ID %>% unique() %>% length()/TARA_contex$sample_ID %>% unique() %>% length())
+
+```
+| Metagenome samples | Depth layers | Percent of total samples |
+|--------------------|--------------|--------------------------|
+| Prokaryotic        | all          | 55.8%                    |
+| Prokaryotic        | surface      | 26%                      |
+| Viral              | all          | 18.2%                    |
+| Viral              | surface      | 8.68%                    |
+
+## 4. Separate cluster abundance data 
+
+Subset cluster abundance data into different fractions
+```{r}
+# TARA prokaryotic, all depths
+clstrs_tp <- clstrs_tara_comp_agg %>% filter(sample_ID %in% TARA_contex_3$sample_ID) 
+# - tp = TARA prokaryotic
+
+# TARA prokaryotic, surface samples
+clstrs_tps <- clstrs_tara_comp_agg %>% filter(sample_ID %in% TARA_contex_4$sample_ID) 
+
+# TARA viral, all depths
+clstrs_tv <- clstrs_tara_comp_agg %>% filter(sample_ID %in% TARA_contex_viral_all$sample_ID)
+
+# TARA viral, surface samples
+clstrs_tvs <- clstrs_tara_comp_agg %>% filter(sample_ID %in% TARA_contex_viral_srf$sample_ID)
+
+save(clstrs_tp, clstrs_tps, clstrs_tv, clstrs_tvs, clstrs_tara_comp_agg, file = "/bioinf/projects/megx/UNKNOWNS/Matt/clstr_abun_raw.RData")
+#load("/bioinf/projects/megx/UNKNOWNS/Matt/clstr_abun_raw.RData")
+load("~/Downloads/clstr_abun_raw.RData")
+```
+
+Calculate statistics about the components
+```{r}
+library(pbmcapply)
+
+x <- list(clstrs_tp, clstrs_tps, clstrs_tv, clstrs_tvs, clstrs_tara_comp_agg)
+#x <- list(clstrs_tp, clstrs_tps, clstrs_tara_comp_agg)
+
+stats <-  function(x){
+ x_stats <-  as.data.frame(x) %>%
+  ungroup() %>%
+  group_by(sample_ID) %>%
+  mutate(proportion = (abun/sum(abun))) %>%
+  ungroup() %>%
+  group_by(component) %>%
+  mutate(mean_proportion = mean(proportion)) %>%
+  mutate(var_proportion = var(proportion)) %>%
+  mutate(occurrence = length(unique(sample_ID))) %>%
+  mutate(index_dispersion = ((var_proportion/mean_proportion)*occurrence)) %>%
+  ungroup()
+ }
+
+stats_1 <- pbmclapply(x[1:5], FUN = stats, mc.cores = 30)
+
+clstrs_tp_stats_1 <- stats_1[[1]]
+
+clstrs_tps_stats_1 <- stats_1[[2]]
+
+clstrs_tv_stats_1 <- stats_1[[3]]
+
+clstrs_tvs_stats_1 <- stats_1[[4]]
+
+clstrs_tara_comp_agg_stats <- stats_1[[5]]
+
+summary(clstrs_tp_stats_1$mean_proportion)
+summary(clstrs_tps_stats_1$mean_proportion)
+summary(clstrs_tv_stats_1$mean_proportion)
+summary(clstrs_tvs_stats_1$mean_proportion)
+summary(clstrs_tara_comp_agg_stats$mean_proportion)
+
+# save data
+save(clstrs_tp_stats_1, clstrs_tps_stats_1, clstrs_tv_stats_1, clstrs_tvs_stats_1, clstrs_tara_comp_agg_stats, 
+     file = "/bioinf/projects/megx/UNKNOWNS/Matt/clstrs_tara_f0.RData")
+#load("/bioinf/projects/megx/UNKNOWNS/Matt/clstrs_tara_f0.RData")
+load("~/Downloads/clstrs_tara_f0.RData")
+```
+
+What percentage of all clusters are found in the different TARA metagenome fractions?
+```{r}
+percent(clstrs_tp$clstr_ID %>% unique() %>% length() / clstrs$clstr_ID %>% unique() %>% length())
+
+percent(clstrs_tps$clstr_ID %>% unique() %>% length() / clstrs$clstr_ID %>% unique() %>% length())
+
+percent(clstrs_tv$clstr_ID %>% unique() %>% length() / clstrs$clstr_ID %>% unique() %>% length())
+
+percent(clstrs_tvs$clstr_ID %>% unique() %>% length() / clstrs$clstr_ID %>% unique() %>% length())
+```
+
+## 5. Filter out samples with low counts
+Samples with total component counts lower than the median minus 1.5xMAD were filtered out of each filter fraction subset.
+### 5.1 Convert abundances to total counts per samples.
+```{r}
+# Sum up counts for each sample
+clstrs_tp_counts <- clstrs_tp %>% group_by(sample_ID) %>% summarise(counts = sum(abun)) %>% ungroup()
+
+clstrs_tps_counts <- clstrs_tps %>% group_by(sample_ID) %>% summarise(counts = sum(abun)) %>% ungroup()
+
+clstrs_tv_counts <- clstrs_tv %>% group_by(sample_ID) %>% summarise(counts = sum(abun)) %>% ungroup()
+
+clstrs_tvs_counts <- clstrs_tvs %>% group_by(sample_ID) %>% summarise(counts = sum(abun)) %>% ungroup()
+
+clstrs_tara_comp_agg_counts <- clstrs_tara_comp_agg %>% group_by(sample_ID) %>% summarise(counts = sum(abun)) %>% ungroup()
+
+
+```
+### 5.2 Visualize sample counts
+Calculate the MAD and the median
+```{r}
+# TP
+# Calculate the MAD and median of the counts
+tp_c_t <- median(clstrs_tp_counts$counts) - 1.5*stats::mad(clstrs_tp_counts$counts, constant = 1)
+tp_c_t_m <- median(clstrs_tp_counts$counts)
+
+# TPS
+tps_c_t <- median(clstrs_tps_counts$counts) - 1.5*stats::mad(clstrs_tps_counts$counts, constant = 1)
+tps_c_t_m <- median(clstrs_tps_counts$counts)
+
+# TV
+tv_c_t <- median(clstrs_tv_counts$counts) - 1.5*stats::mad(clstrs_tv_counts$counts, constant = 1)
+tv_c_t_m <- median(clstrs_tv_counts$counts) 
+
+#TVS
+tvs_c_t <- median(clstrs_tvs_counts$counts) - 1.5*stats::mad(clstrs_tvs_counts$counts, constant = 1)
+tvs_c_t_m <- median(clstrs_tvs_counts$counts) 
+
+#all
+clstrs_tara_comp_agg_countsc_t <- median(clstrs_tara_comp_agg_counts$counts) - 1.5*stats::mad(clstrs_tara_comp_agg_counts$counts, constant = 1)
+clstrs_tara_comp_agg_counts_c_t_m <- median(clstrs_tara_comp_agg_counts$counts)
+```
+Now lets visualize the distribution of total samples counts. If any samples are outliers (i.e. radically different count sizes), then they should be filtered out.
+```{r}
+library("sitools")
+
+a <- ggplot(clstrs_tp_counts %>% mutate(sample_ID = fct_reorder(sample_ID, counts)), aes(sample_ID, counts)) +
+  #geom_histogram(bins = nclass.FD(test.counts$counts), color = "white", size = 0.1) +
+  geom_bar(stat = "identity") +
+  geom_hline(yintercept = tp_c_t, linetype = "dashed", size = 1) +
+  geom_hline(yintercept = tp_c_t_m, linetype = "dashed", size = 1) +
+  scale_y_continuous(labels=f2si) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()) +
+  ggtitle("Prokaryotic") +
+  ylab("Cluster counts") +
+  xlab("")
+
+b <- ggplot(clstrs_tps_counts %>% mutate(sample_ID = fct_reorder(sample_ID, counts)), aes(sample_ID, counts)) +
+  #geom_histogram(bins = nclass.FD(test.counts$counts), color = "white", size = 0.1) +
+  geom_bar(stat = "identity") +
+  geom_hline(yintercept = tps_c_t, linetype = "dashed", size = 1) +
+  geom_hline(yintercept = tps_c_t_m, linetype = "dashed", size = 1) +
+  scale_y_continuous(labels=f2si) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()) +
+  ggtitle("Prokaryotic surface")+
+  ylab("") +
+  xlab("")
+
+
+c <- ggplot(clstrs_tv_counts %>% mutate(sample_ID = fct_reorder(sample_ID, counts)), aes(sample_ID, counts)) +
+  geom_bar(stat = "identity") +
+  geom_hline(yintercept = tv_c_t, linetype = "dashed", size = 1) +
+  geom_hline(yintercept = tv_c_t_m, linetype = "dashed", size = 1) +
+  scale_y_continuous(labels=f2si) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()) +
+  ggtitle("Viral") +
+  ylab("Cluster counts") +
+  xlab("Samples")
+
+d <- ggplot(clstrs_tvs_counts %>% mutate(sample_ID = fct_reorder(sample_ID, counts)), aes(sample_ID, counts)) +
+  #geom_histogram(bins = nclass.FD(test.counts$counts), color = "white", size = 0.1) +
+  geom_bar(stat = "identity") +
+  geom_hline(yintercept = tvs_c_t, linetype = "dashed", size = 1) +
+  geom_hline(yintercept = tvs_c_t_m, linetype = "dashed", size = 1) +
+  scale_y_continuous(labels=f2si) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()) +
+  ggtitle("Viral surface")+ 
+  ylab("") +
+  xlab("Samples")
+
+f <- ggarrange(a,b,c,d)
+g <- annotate_figure(p = f, 
+                top = text_grob("TARA sample Cluster Counts (raw)", color = "red", face = "bold", size = 16, hjust = 0.4))
+g
+```
+The TARA prokaryotic, prokaryotic surface only, and viral metagenomes have some samples with low counts. The lower dash line indicated the MAD (Median Absolute Deviation) subtracted from the median. This appears to be a good cut off to filter out samples with lower counts compared to the rest. [Here](kldavenport.com/absolute-deviation-around-the-median/) is an explanation of how the MAD and the median are related.
+
+### 5.3 Filter out samples with low counts
+Filter out samples with counts less than the median - 1.5x MAD
+```{r}
+# TP
+clstrs_tp_counts_filtered <- clstrs_tp_counts %>% filter(counts >= tp_c_t)
+
+# TPS
+clstrs_tps_counts_filtered <- clstrs_tps_counts %>% filter(counts >= tps_c_t)
+
+# TV
+clstrs_tv_counts_filtered <- clstrs_tv_counts %>% filter(counts >= tv_c_t)
+
+# TVS
+clstrs_tvs_counts_filtered <- clstrs_tvs_counts %>% filter(counts >= tvs_c_t)
+
+#ALL
+clstrs_tara_comp_agg_counts_filtered <- clstrs_tara_comp_agg_counts %>% filter(counts >= tvs_c_t)
+```
+
+### 5.4 Re-visualize the samples counts
+Now plot and compare the samples before and after removing samples with low counts
+```{r}
+h <- ggplot(clstrs_tp_counts_filtered %>% mutate(sample_ID = fct_reorder(sample_ID, counts)), aes(sample_ID, counts)) +
+  #geom_histogram(bins = nclass.FD(test.counts$counts), color = "white", size = 0.1) +
+  geom_bar(stat = "identity") +
+  geom_hline(yintercept = tp_c_t, linetype = "dashed", size = 1) +
+  geom_hline(yintercept = tp_c_t_m, linetype = "dashed", size = 1) +
+  scale_y_continuous(labels=f2si) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()) +
+  ggtitle("Prokaryotic") +
+  ylab("Cluster counts") +
+  xlab("")
+
+i <- ggplot(clstrs_tps_counts_filtered %>% mutate(sample_ID = fct_reorder(sample_ID, counts)), aes(sample_ID, counts)) +
+  #geom_histogram(bins = nclass.FD(test.counts$counts), color = "white", size = 0.1) +
+  geom_bar(stat = "identity") +
+  geom_hline(yintercept = tps_c_t, linetype = "dashed", size = 1) +
+  geom_hline(yintercept = tps_c_t_m, linetype = "dashed", size = 1) +
+  scale_y_continuous(labels=f2si) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()) +
+  ggtitle("Prokaryotic surface")+
+  ylab("") +
+  xlab("")
+
+j <- ggplot(clstrs_tv_counts_filtered %>% mutate(sample_ID = fct_reorder(sample_ID, counts)), aes(sample_ID, counts)) +
+  #geom_histogram(bins = nclass.FD(test.counts$counts), color = "white", size = 0.1) +
+  geom_bar(stat = "identity") +
+  geom_hline(yintercept = tv_c_t, linetype = "dashed", size = 1) +
+  geom_hline(yintercept = tv_c_t_m, linetype = "dashed", size = 1) +
+  scale_y_continuous(labels=f2si) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()) +
+  ggtitle("Viral") +
+  ylab("Cluster counts") +
+  xlab("Samples")
+
+k <- ggplot(clstrs_tvs_counts_filtered %>% mutate(sample_ID = fct_reorder(sample_ID, counts)), aes(sample_ID, counts)) +
+  #geom_histogram(bins = nclass.FD(test.counts$counts), color = "white", size = 0.1) +
+  geom_bar(stat = "identity") +
+  geom_hline(yintercept = tvs_c_t, linetype = "dashed", size = 1) +
+  geom_hline(yintercept = tvs_c_t_m, linetype = "dashed", size = 1) +
+  scale_y_continuous(labels=f2si) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()) +
+  ggtitle("Viral surface")+ 
+  ylab("") +
+  xlab("Samples")
+
+ggarrange(a,h,b,i,c,j,d,k, ncol = 2, nrow = 4)
+```
+Samples counts are now much more evenly distributed.
+
+### 5.5 Make cluster data with new filter samples only
+```{r}
+# TP
+clstrs_tp_f1 <- clstrs_tp %>% filter(sample_ID %in% clstrs_tp_counts_filtered$sample_ID)
+
+#TPS
+clstrs_tps_f1 <- clstrs_tps %>% filter(sample_ID %in% clstrs_tps_counts_filtered$sample_ID)
+
+#TV
+clstrs_tv_f1 <- clstrs_tv %>% filter(sample_ID %in% clstrs_tv_counts_filtered$sample_ID)
+
+#TVS
+clstrs_tvs_f1 <- clstrs_tvs %>% filter(sample_ID %in% clstrs_tvs_counts_filtered$sample_ID)
+
+# All
+clstrs_tara_comp_agg_f1 <- clstrs_tara_comp_agg %>% filter(sample_ID %in% clstrs_tara_comp_agg_counts_filtered$sample_ID)
+```
+
+How many samples were removed after filtering out samples with low counts?
+```{r}
+clstrs_tp$sample_ID %>% unique() %>% length() - clstrs_tp_f1$sample_ID %>% unique() %>% length()
+
+clstrs_tps$sample_ID %>% unique() %>% length() - clstrs_tps_f1$sample_ID %>% unique() %>% length()
+
+clstrs_tv$sample_ID %>% unique() %>% length() - clstrs_tv_f1$sample_ID %>% unique() %>% length()
+
+clstrs_tvs$sample_ID %>% unique() %>% length() - clstrs_tvs_f1$sample_ID %>% unique() %>% length()
+
+clstrs_tara_comp_agg$sample_ID %>% unique() %>% length() - clstrs_tara_comp_agg_f1$sample_ID %>% unique() %>% length()
+```
+
+## 6 Calculate cluster statistics after removing low count samples
+```{r}
+x <- list(clstrs_tp_f1, clstrs_tps_f1, clstrs_tv_f1, clstrs_tvs_f1, clstrs_tara_comp_agg_f1)
+
+stats <-  function(x){
+ x_stats <-  as.data.frame(x) %>%
+  ungroup() %>%
+  group_by(sample_ID) %>%
+  mutate(proportion = (abun/sum(abun))) %>%
+  ungroup() %>%
+  group_by(component) %>%
+  mutate(mean_proportion = mean(proportion)) %>%
+  mutate(var_proportion = var(proportion)) %>%
+  mutate(occurrence = length(unique(sample_ID))) %>%
+  mutate(index_dispersion = ((var_proportion/mean_proportion)*occurrence)) %>%
+  ungroup()
+ }
+
+stats_2 <- pbmclapply(x[1:5], FUN = stats, mc.cores = 40)
+
+clstrs_tp_stats_f1 <- stats_2[[1]]
+
+clstrs_tps_stats_f1 <- stats_2[[2]]
+
+clstrs_tv_stats_f1 <- stats_2[[3]]
+
+clstrs_tvs_stats_f1 <- stats_2[[4]]
+
+clstrs_tara_comp_agg_stats_f1 <- stats_2[[5]]
+
+summary(clstrs_tp_stats_f1$mean_proportion)
+summary(clstrs_tps_stats_f1$mean_proportion)
+summary(clstrs_tv_stats_f1$mean_proportion)
+summary(clstrs_tvs_stats_f1$mean_proportion)
+
+# save data
+save(clstrs_tp_stats_f1, clstrs_tps_stats_f1, clstrs_tv_stats_f1, clstrs_tvs_stats_f1, clstrs_tara_comp_agg_stats_f1,
+     file = "/bioinf/projects/megx/UNKNOWNS/Matt/clstrs_tara_f1.RData")
+#load("/bioinf/projects/megx/UNKNOWNS/Matt/clstrs_tara_f1.RData")
+```
+These data objects will be used for the ordinations, niche breadth, and distance decay. We want to perform transformations prior to removing low counts components in order to maintain proportions between them. After transformations are applied, teh low count components can be removed. The rest of the filtering below is for visualizing the filtered data. 
+
+
+
+## 7. Filter for clusters 
+EU clusters were filtered out of the abundance data that had a mean proportion less than 2e-5. This was done to remove clusters that do not contribute to a significant abundance and will not deviate any environmental signal in processing down the pipeline. 
+```{r}
+# TARA prokaryotic, all depth layers
+clstrs_tp_f2 <- clstrs_tp_stats_f1 %>% filter(mean_proportion > 1e-5)
+
+# TARA prokaryotic surface
+clstrs_tps_f2 <- clstrs_tps_stats_f1 %>% filter(mean_proportion > 1e-5)
+
+# TARA prokaryotic surface
+clstrs_tv_f2 <- clstrs_tv_stats_f1 %>% filter(mean_proportion > 1e-5)
+
+# TARA prokaryotic surface
+clstrs_tvs_f2 <- clstrs_tvs_stats_f1 %>% filter(mean_proportion > 1e-5)
+
+#ALL
+clstrs_tara_comp_agg_f2 <- clstrs_tara_comp_agg_stats_f1 %>% filter(mean_proportion > 1e-5)
+
+```
+
+```{r}
+x <- list(clstrs_tp_f2, clstrs_tps_f2, clstrs_tv_f2, clstrs_tvs_f2, clstrs_tara_comp_agg_f2)
+
+stats <-  function(x){
+ x_stats <-  as.data.frame(x) %>%
+  ungroup() %>%
+  group_by(sample_ID) %>%
+  mutate(proportion = (abun/sum(abun))) %>%
+  ungroup() %>%
+  group_by(component) %>%
+  mutate(mean_proportion = mean(proportion)) %>%
+  mutate(var_proportion = var(proportion)) %>%
+  mutate(occurrence = length(unique(sample_ID))) %>%
+  mutate(index_dispersion = ((var_proportion/mean_proportion)*occurrence)) %>%
+  ungroup()
+ }
+
+stats_3 <- pbmclapply(x[1:5], FUN = stats, mc.cores = 40)
+
+clstrs_tp_stats_f2 <- stats_3[[1]]
+
+clstrs_tps_stats_f2 <- stats_3[[2]]
+
+clstrs_tv_stats_f2 <- stats_3[[3]]
+
+clstrs_tvs_stats_f2 <- stats_3[[4]]
+
+clstrs_tara_comp_agg_stats_f2 <- stats_3[[5]]
+
+
+summary(clstrs_tp_stats_f2$mean_proportion)
+summary(clstrs_tps_stats_f2$mean_proportion)
+summary(clstrs_tv_stats_f2$mean_proportion)
+summary(clstrs_tvs_stats_f2$mean_proportion)
+
+save(clstrs_tp_stats_f2, clstrs_tps_stats_f2, clstrs_tv_stats_f2, clstrs_tvs_stats_f2, clstrs_tara_comp_agg_stats_f2, 
+     file = "/bioinf/projects/megx/UNKNOWNS/Matt/clstrs_tara_f2.RData")
+#load("/bioinf/projects/megx/UNKNOWNS/Matt/clstrs_tara_f2.RData)
+```
+
+Calculate difference in mean_proportion (median) after sample and cluster filtering steps
+```{r}
+# Raw
+summary(clstrs_tp_stats_1$mean_proportion)
+summary(clstrs_tps_stats_1$mean_proportion)
+summary(clstrs_tv_stats_1$mean_proportion)
+summary(clstrs_tvs_stats_1$mean_proportion)
+
+# Samples filtered out for low counts
+summary(clstrs_tp_stats_2$mean_proportion)
+summary(clstrs_tps_stats_2$mean_proportion)
+summary(clstrs_tv_stats_2$mean_proportion)
+summary(clstrs_tvs_stats_2$mean_proportion)
+
+# Clusters filtered for low mean_prop
+summary(clstrs_tp_stats_3$mean_proportion)
+summary(clstrs_tps_stats_3$mean_proportion)
+summary(clstrs_tv_stats_3$mean_proportion)
+summary(clstrs_tvs_stats_3$mean_proportion)
+
+summary(clstrs_tp_stats_1$mean_proportion)
+summary(clstrs_tp_stats_2$mean_proportion)
+summary(clstrs_tp_stats_3$mean_proportion)
+summary(clstrs_tp_stats_3$proportion)
+
+```
+
+| Filter fraction | Depth layers | Raw(median mean_prop) | MAD(median mean_prop)  | mean prop(median mean_prop) |
+|-----------------|--------------|-----------------------|------------------------|-----------------------------|
+| Prokaryotic     | all          | 2.525e-06             | 2.375e-06              | 2.933e-05                   |
+| Prokaryotic     | surface      | 2.362e-06             | 2.188e-06              | 3.015e-05                   |
+| Viral           | all          | 8.198e-06             | 8.198e-06              | 3.188e-05                   |
+| Viral           | surface      | 7.502e-06             | 7.368e-06              | 3.160e-05                   |
+
+### 7.1 Visualize sample counts after filtering for cluster mean_proportion > 2e-5
+```{r}
+# Sum up counts for each sample
+clstrs_tp_stats_filtered_1_counts <- clstrs_tp_stats_filtered_1 %>% group_by(sample_ID) %>% summarise(counts = sum(abun))
+
+clstrs_tps_stats_filtered_1_counts <- clstrs_tps_stats_filtered_1 %>% group_by(sample_ID) %>% summarise(counts = sum(abun))
+
+clstrs_tv_stats_filtered_1_counts <- clstrs_tv_stats_filtered_1 %>% group_by(sample_ID) %>% summarise(counts = sum(abun))
+
+clstrs_tvs_stats_filtered_1_counts <- clstrs_tvs_stats_filtered_1 %>% group_by(sample_ID) %>% summarise(counts = sum(abun))
+```
+
+```{r}
+# Plot
+l <- ggplot(clstrs_tp_stats_filtered_1_counts %>% mutate(sample_ID = fct_reorder(sample_ID, counts)), aes(sample_ID, counts)) +
+  #geom_histogram(bins = nclass.FD(test.counts$counts), color = "white", size = 0.1) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(labels=f2si) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()) +
+  ggtitle("Sample cluster abundances\n(TARA, prok; mean_prop > 2e-5")+ 
+  ylab("") +
+  xlab("Samples")
+
+
+m <- ggplot(clstrs_tps_stats_filtered_1_counts %>% mutate(sample_ID = fct_reorder(sample_ID, counts)), aes(sample_ID, counts)) +
+  #geom_histogram(bins = nclass.FD(test.counts$counts), color = "white", size = 0.1) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(labels=f2si) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()) +
+  ggtitle("Sample cluster abundances\n(TARA, prok=-srf; mean_prop > 2e-5")+ 
+  ylab("") +
+  xlab("Samples")
+
+n <- ggplot(clstrs_tv_stats_filtered_1_counts %>% mutate(sample_ID = fct_reorder(sample_ID, counts)), aes(sample_ID, counts)) +
+  #geom_histogram(bins = nclass.FD(test.counts$counts), color = "white", size = 0.1) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(labels=f2si) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()) +
+  ggtitle("Sample cluster abundances\n(TARA, viral; mean_prop > 2e-5")+ 
+  ylab("") +
+  xlab("Samples")
+
+o <- ggplot(clstrs_tvs_stats_filtered_1_counts %>% mutate(sample_ID = fct_reorder(sample_ID, counts)), aes(sample_ID, counts)) +
+  #geom_histogram(bins = nclass.FD(test.counts$counts), color = "white", size = 0.1) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(labels=f2si) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()) +
+  ggtitle("Sample cluster abundances\n(TARA, viral-srf; mean_prop > 2e-5")+ 
+  ylab("") +
+  xlab("Samples")
+
+ggarrange(a, h, l, nrow = 1, ncol = 3)
+```
+
+What percentage of reads are left after filtering for mean proportion > 2e-5?
+```{r}
+# TARA prokaryotic fraction
+percent(median(clstrs_tp_stats_filtered_1_counts$counts)/median(clstrs_tp_stats_counts$counts))
+
+# TARA prokaryotic fraction, surface samples
+percent(median(clstrs_tps_stats_filtered_1_counts$counts)/median(clstrs_tps_stats_counts$counts))
+
+# TARA viral fraction
+percent(median(clstrs_tv_stats_filtered_1_counts$counts)/median(clstrs_tv_stats_counts$counts))
+
+# TARA viral fraction, surface samples
+percent(median(clstrs_tvs_stats_filtered_1_counts$counts)/median(clstrs_tvs_stats_counts$counts))
+```
+
+## 8. Filter for sparsity
+
+Sparsity is an important factor to consider when performing site ordination techniques. The more 0's there are, less power the matrix has in explaining the difference between the sites. The goal of this plot is to illuminate how sparsity is related to total number of sequences and clusters. It appears that ~7% sparsity, the most information can be maintained in the matrix (i.e. clusters and sequences). 
+```{r}
+percent_occurrence <- seq(0, 1, 0.1)
+
+# filtering function
+prevalence_filtering <- function(X, Y) { 
+  df <- as_tibble(Y) %>%
+    ungroup() %>%
+    dplyr::select(sample_ID, clstr_ID, abun) %>%
+    group_by(clstr_ID) %>%
+    mutate(occurrence = length(unique(sample_ID))) %>%
+    ungroup() %>%
+    mutate(n_samples = length(unique(sample_ID)), 
+           prev = n_samples * X) %>%
+    filter(occurrence >= prev) %>%
+    summarise(prev = X, 
+              n_clstrs = length(unique(clstr_ID)), 
+              n_samples = length(unique(sample_ID)),
+              no_zero = sum(abun > 0), 
+              sparsity = 1 - (no_zero/(n_clstrs * n_samples)),
+              total_counts = sum(abun))
+  return(df)  
+}
+
+# apply function
+clstrs_tp_stats_filtered_1_prev <- bind_rows(pbmclapply(X = percent_occurrence, FUN = prevalence_filtering, Y = clstrs_tp_stats_filtered_1))
+
+# Tidy data via gather (melt)
+clstrs_tp_stats_filtered_1_prev_l <- clstrs_tp_stats_filtered_1_prev %>%
+  dplyr::select(prev, n_samples, n_clstrs, total_counts, sparsity) %>%
+  rename(Samples = n_samples, Clusters = n_clstrs, Counts = total_counts, Sparsity = sparsity) %>%
+  gather(Cluster_stats, value, -prev)
+
+# ggplot
+
+x <- ggplot(clstrs_tp_stats_filtered_1_prev_l, aes(prev, value, color = Cluster_stats)) +
+  theme_light() +
+  theme(plot.title = element_text(color="red", size=14, face="bold"), legend.position = "bottom") +
+  geom_line(size = 2) +
+  scale_y_log10(labels = scales::comma) +
+  ggtitle("Cluster prevalence vs. ORF abundance data") + 
+  guides(fill=guide_legend(title="New Legend Title")) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  xlab("ORF cluster prevalence requirement") +
+  ylab("Cluster data")
+  
+
+x + facet_grid(Cluster_stats ~ ., scales = "free", space="free") +
+    theme(strip.text.y = element_text(size=10, face="bold", colour = "black"),
+          strip.background = element_rect(colour="black", fill="grey"))
+
+# plotly
+ggplotly(x)
+```
+
+```{r}
+library(tidyverse)
+library(cowplot)
+
+# From http://www.moeding.net/archives/32-Metric-prefixes-for-ggplot2-scales.html
+FormatSI <- function(x, ...) {
+  # Format a vector of numeric values according to the
+  # International System of Units.
+  # http://en.wikipedia.org/wiki/SI_prefix
+  #
+  # Args:
+  #   x  : A vector of numeric values
+  #   ...: Remaining args passed to format()
+  #
+  # Returns:
+  #   A vector of strings using SI prefix notation
+  #
+  # Bugs:
+  #   Does not (yet) work with small (<1) numbers
+  #
+  scale.frac <- 1000
+  scale.unit <- c("k", "M", "G", "T", "P", "E", "Z", "Y")
+  
+  # Start with empty prefixes
+  p <- rep(" ", length(x))
+  
+  # Divide by scale.frac and store scale.unit if value is
+  # large enough. Repeat for all units.
+  for(i in 1:length(scale.unit)) {
+    p[x >= scale.frac] <- scale.unit[i]
+    x[x >= scale.frac] <- x[x >= scale.frac] / scale.frac
+  }
+  
+  return(paste(format(round(x,1), trim=TRUE, scientific=FALSE, ...), p, sep = ""))
+}
+
+
+spar <- clstrs_tp_stats_filtered_1_prev_l %>% filter(Cluster_stats == "Sparsity")
+f_spar <- approxfun(spar$prev, spar$value)
+
+samp <- clstrs_tp_stats_filtered_1_prev_l %>% filter(Cluster_stats == "Samples")
+f_samp <- approxfun(samp$prev, samp$value)
+
+counts <- clstrs_tp_stats_filtered_1_prev_l %>% filter(Cluster_stats == "Counts")
+f_counts <- approxfun(counts$prev, counts$value)
+
+clusters <- clstrs_tp_stats_filtered_1_prev_l %>% filter(Cluster_stats == "Clusters")
+f_clusters <- approxfun(clusters$prev, clusters$value)
+
+
+p <- 0.05
+
+p_spar <- ggplot(spar, aes(prev, value)) +
+  geom_line() +
+  geom_segment(aes(x = p, y = 0, xend = p, yend = f_spar(p)), lty = "dotted") +
+  geom_segment(aes(x = 0, y = f_spar(p), xend = p, yend = f_spar(p)), lty = "dotted") +
+  scale_x_continuous(expand = c(0,0), labels = scales::percent) +
+  scale_y_continuous(expand = c(0,0), labels = scales::percent) +
+  geom_point(aes(p, f_spar(p)), size = 2, shape = 21, fill = "white") +
+  xlab("Prevalence") +
+  ylab("Sparsity") +
+  theme_light() +
+  theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"),
+        plot.title = element_text(size = 8, face = "bold", vjust = -1)) +
+  ggtitle(paste("Sparsity:", scales::percent(round(f_spar(p),3))))
+
+p_samp <- ggplot(samp, aes(prev, value)) +
+  geom_line() +
+  geom_segment(aes(x = p, y = 0, xend = p, yend = f_samp(p)), lty = "dotted") +
+  geom_segment(aes(x = 0, y = f_samp(p), xend = p, yend = f_samp(p)), lty = "dotted") +
+  scale_x_continuous(expand = c(0,0), labels = scales::percent) +
+  scale_y_continuous(expand = c(0,0), labels = scales::comma, limits = c(0,150)) +
+  geom_point(aes(p, f_samp(p)), size = 2, shape = 21, fill = "white") +
+  xlab("Prevalence") +
+  ylab("Samples") +
+  theme_light() +
+  theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"),
+        plot.title = element_text(size = 8, face = "bold", vjust = -1)) +
+  ggtitle(paste("Samples:", scales::comma(round(f_samp(p),3))))
+
+p_counts <- ggplot(counts, aes(prev, value)) +
+  geom_line() +
+  geom_segment(aes(x = p, y = 0, xend = p, yend = f_counts(p)), lty = "dotted") +
+  geom_segment(aes(x = 0, y = f_counts(p), xend = p, yend = f_counts(p)), lty = "dotted") +
+  scale_x_continuous(expand = c(0,0), labels = scales::percent) +
+  scale_y_continuous(expand = c(0,0), labels=FormatSI) +
+  geom_point(aes(p, f_counts(p)), size = 2, shape = 21, fill = "white") +
+  xlab("Prevalence") +
+  ylab("Counts") +
+  theme_light() +
+  theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"),
+        plot.title = element_text(size = 8, face = "bold", vjust = -1)) +
+  ggtitle(paste("Counts:", scales::comma(round(f_counts(p),3))))
+
+p_clusters <- ggplot(clusters, aes(prev, value)) +
+  geom_line() +
+  geom_segment(aes(x = p, y = 0, xend = p, yend = f_clusters(p)), lty = "dotted") +
+  geom_segment(aes(x = 0, y = f_clusters(p), xend = p, yend = f_clusters(p)), lty = "dotted") +
+  scale_x_continuous(expand = c(0,0), labels = scales::percent) +
+  scale_y_continuous(expand = c(0,0), labels=scales::comma, breaks = seq(0, max(clusters$value), by = 5000)) +
+  geom_point(aes(p, f_clusters(p)), size = 2, shape = 21, fill = "white") +
+  xlab("Prevalence") +
+  ylab("Clusters") +
+  theme_light() +
+  theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"),
+        plot.title = element_text(size = 8, face = "bold", vjust = -1)) +
+  ggtitle(paste("Clusters:", scales::comma(round(f_clusters(p),3))))
+
+p_all <- plot_grid(p_spar, p_counts, p_samp, p_clusters, labels=c('A', 'B', 'C', 'D'))
+title <- ggdraw() + draw_label(paste("Filtering with a prevalence value of", scales::percent(p)), fontface='bold')
+plot_grid(title, p_all, ncol=1, rel_heights=c(0.1, 1))
+```
+
+As the required prevelance of clusters is required in samples increased, sparsity of the reponse matrix decrease. 7% seems to be a good point where sparsity is decreased, yet a significant number of clusters and sequences is maintained.
+```{r}
+# TARA prokaryotic, all depth layers, 5% prevalence
+clstrs_tp_stats_filtered_2 <- as_tibble(clstrs_tp_stats_filtered_1) %>%
+    ungroup() %>%
+    group_by(clstr_ID) %>%
+    mutate(occurrence = length(unique(sample_ID))) %>%
+    ungroup() %>%
+    mutate(n_samples = length(unique(sample_ID)), prev = n_samples * 0.05) %>%
+    filter(occurrence >= prev)
+
+# TARA prokaryotic surface, 5% prevalence
+clstrs_tps_stats_filtered_2 <- as_tibble(clstrs_tps_stats_filtered_1) %>%
+    ungroup() %>%
+    group_by(clstr_ID) %>%
+    mutate(occurrence = length(unique(sample_ID))) %>%
+    ungroup() %>%
+    mutate(n_samples = length(unique(sample_ID)), prev = n_samples * 0.05) %>%
+    filter(occurrence >= prev)
+
+# TARA viral, all depths, 5% prevalence
+clstrs_tv_stats_filtered_2 <- as_tibble(clstrs_tv_stats_filtered_1) %>%
+    ungroup() %>%
+    group_by(clstr_ID) %>%
+    mutate(occurrence = length(unique(sample_ID))) %>%
+    ungroup() %>%
+    mutate(n_samples = length(unique(sample_ID)), prev = n_samples * 0.05) %>%
+    filter(occurrence >= prev)
+
+# TARA viral surface, 5% prevalence
+clstrs_tvs_stats_filtered_2 <- as_tibble(clstrs_tvs_stats_filtered_1) %>%
+    ungroup() %>%
+    group_by(clstr_ID) %>%
+    mutate(occurrence = length(unique(sample_ID))) %>%
+    ungroup() %>%
+    mutate(n_samples = length(unique(sample_ID)), prev = n_samples * 0.05) %>%
+    filter(occurrence >= prev)
+```
+
+```{r}
+# Sum up counts for each sample
+clstrs_tp_stats_filtered_2_counts <- clstrs_tp_stats_filtered_2 %>% group_by(sample_ID) %>% summarise(counts = sum(abun))
+
+clstrs_tps_stats_filtered_2_counts <- clstrs_tps_stats_filtered_2 %>% group_by(sample_ID) %>% summarise(counts = sum(abun))
+
+clstrs_tv_stats_filtered_2_counts <- clstrs_tv_stats_filtered_2 %>% group_by(sample_ID) %>% summarise(counts = sum(abun))
+
+clstrs_tvs_stats_filtered_2_counts <- clstrs_tvs_stats_filtered_2 %>% group_by(sample_ID) %>% summarise(counts = sum(abun))
+```
+
+What percentage of reads are left after filtering for mean proportion > 2e-5?
+```{r}
+# TARA prokaryotic fraction
+percent(median(clstrs_tp_stats_filtered_2_counts$counts)/median(clstrs_tp_stats_filtered_1_counts$counts))
+
+# TARA prokaryotic fraction, surface samples
+percent(median(clstrs_tps_stats_filtered_2_counts$counts)/median(clstrs_tps_stats_filtered_1_counts$counts))
+
+# TARA viral fraction
+percent(median(clstrs_tv_stats_filtered_2_counts$counts)/median(clstrs_tv_stats_filtered_1_counts$counts))
+
+# TARA viral fraction, surface samples
+percent(median(clstrs_tvs_stats_filtered_2_counts$counts)/median(clstrs_tvs_stats_filtered_1_counts$counts))
+```
+
+## Median sample counts lost at each filter step
+| Filter size | Depth layers | Median # of Clusters | Filter mean proportion > 2e-5 | Sparsity > 5%   |
+|-------------|--------------|----------------------|-------------------------------|-----------------|
+| Prokaryotic | all          | 18365478             | 5364161 (29.2%)               | 5259563 (98.1%) |
+| Prokaryotic | surface      | 19587751             | 6341643 (32.4%)               | 6319946 (99.7%) |
+| Viral       | all          | 4231490              | 2158255 (51%)                 | 2112896 (97.9%) |
+| Viral       | surface      | 4180739              | 2184010 (52.2%)               | 2037397 (93.3%) |
+
+## 5. Save data
+```{r}
+## TARA prokaryotic, all depth layers
+# contextual data
+TARA_contex_prok <- TARA_contex_3
+save(TARA_contex_prok, file = "../data/TARA_contex_prok.Rdata")
+
+# filtered by mean_prop
+# Prokaryotic
+TARA_clstrs_all_prok_meanprop <- clstrs_tp_stats_filtered_1
+save(TARA_clstrs_all_prok_meanprop, file = "../data/TARA_clstrs_all_prok_meanprop.Rdata")
+# Surface prokaryotic
+TARA_clstrs_srf_prok_meanprop <- clstrs_tsp_stats_filtered_1
+save(TARA_clstrs_all_prok_meanprop, file = "../data/TARA_clstrs_srf_prok_meanprop.Rdata")
+
+# filtered by mean_prop and  prevalence
+TARA_clstrs_all_prok_meanprop_prev <- clstrs_tp_stats_filtered_2
+save(TARA_clstrs_all_prok_meanprop_prev, file = "../data/TARA_clstrs_all_prok_meanprop_prev.Rdata")
+
+## TARA prokaryotic surface
+# contextual data
+save(TARA_contex, file = "../data/TARA_contex.Rdata")
+
+TARA_contex_srfprok <- TARA_contex_4
+
+save(TARA_contex_srfprok, file = "../data/TARA_contex_srfprok.Rdata")
+```
+

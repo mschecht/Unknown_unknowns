@@ -1,0 +1,423 @@
+---
+title: "TARA Oceans surface (prokaryotic metagenome) component ordinations"
+author: "Matthew Schechter"
+output: html_document
+github_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+This notebook shows the workflow for the orindation of TARA Ocean prokaryotics metagenomes based on component abundances (Vanni et. al. 2018). Component abundance normalization and transformation procedures were referenced from [Gloor et. al., 2017](https://www.frontiersin.org/articles/10.3389/fmicb.2017.02224/full#supplementary-material) and [Hawinkel, 2015](https://lib.ugent.be/fulltxt/RUG01/002/214/012/RUG01-002214012_2015_0001_AC.pdf). The TARA contextual data used in this notebook is from [Sunagawa et. al. 2015](http://science.sciencemag.org/content/348/6237/1261359)
+
+To reproduce this workflow, upload `clstrs_tara_f1.RData` in step 2 - abundance data. Data can be at Figshare (10.6084/m9.figshare.5979658).
+
+### TARA sample info
+- virus-enriched:(<0.22 mm): n = 45; 
+- girus/prokaryoteenriched: (0.1 to 0.22 mm, 0.22 to 0.45 mm,0.45 to 0.8 mm): n = 59;
+- prokaryote-enrichedfractions (0.22 to 1.6 mm, 0.22 to 3 mm): n = 139]
+
+## 1. Set environment
+```{r}
+# load libraries
+library(tidyverse)
+library(data.table)
+library(pbmcapply)
+library(vegan)
+library(rworldmap)
+library(RSQLite)
+library(ggpubr)
+library(plotly)
+library(MASS)
+library(tidyverse)
+library(vegan)
+library(metagenomeSeq)
+library(GGally)
+library(scales)
+library(phyloseq)
+library(ggConvexHull)
+library(viridis)
+```
+
+## 2. Load data
+
+### Abundance data
+```{r}
+#load("~/Downloads/clstrs_tara_f1.RData")
+load("~/Desktop/MarMic/msc_thesis/data/clstrs_tara_f1.RData")
+clstrs <- clstrs_tp_stats_f1 # TARA prokaryotic all depths
+
+# create list of low mean_prop components to filter out later
+meanprop_clstrs <- clstrs %>% 
+  filter(mean_proportion > 1e-5)
+
+# change name
+comp_list <- meanprop_clstrs$component
+
+# Filter components abun data into categories
+knowns <- clstrs %>% filter(class == "k" | class == "kwp") %>% dplyr::select(component)
+knowns <- knowns$component
+
+unk <- clstrs %>% filter(class == "gu" | class == "eu") %>% dplyr::select(component)
+unk <- unk$component
+
+# Select only necessary columns
+clstrs <- clstrs %>%
+  dplyr::select(sample_ID, component, abun)
+```
+TARA prokaryotic components are filtered to have a mean proportion greater than 1e-5. This ensures that: (1) extremely low abundant components are filtered out; (2) sequencing noise is removed; and (3) overall size of the resulting abundance matrices is decreased to lower computational resources for calculations. 
+
+How many components will be removed by filtering for x > 1e-5
+```{r}
+(clstrs %>% dplyr::select(component) %>% count)-(meanprop_clstrs %>% dplyr::select(component) %>% unique() %>% count())
+```
+
+
+### Contextual data
+
+Regions used by [Delmont et. al., 2017](https://www.biorxiv.org/content/early/2017/04/23/129791) were used to explore clustering within the ordination.
+```{r}
+# Connect to SQLite databases to read in TARA contextual data.
+
+# USAGE for RSQLite::dbConnect()
+# - drv = typle of databse connection
+# - dbname = path to database
+db <- RSQLite::dbConnect(drv = SQLite(), dbname = "../../../../databases/contextual_data.db")
+
+# list contents of database
+dbListTables(db)
+
+# extract TARA Oceans contextual data from database
+TARA_contex <- as_tibble(dbReadTable(db, "TARA_contex"))
+
+# Disconnect from db
+dbDisconnect(db)
+
+# Filter contextual data for correct samples
+contex <- TARA_contex %>% filter(sample_ID %in% clstrs$sample_ID)
+
+# Add meren sites and temperature range classification
+meren <- read_tsv("~/Desktop/MarMic/msc_thesis/meren/tom_tara_samples.tsv", col_names = TRUE) %>% rename(sample_ID = tara_sample) %>% separate(col = tom_sample, into = c("meren_region","meren_stuff"), sep = "_", remove = FALSE) %>% 
+  dplyr::select(sample_ID, meren_region)
+
+save(meren, file = "~/Desktop/MarMic/msc_thesis/data/meren.RData")
+
+contex <- contex %>%
+  mutate(t_range = ifelse(temperature < 19, "low",
+                          ifelse(temperature >= 19 & temperature < 26,
+                                 "medium", "high"))) %>%
+  mutate(depth_category = case_when( grepl("SRF", sample_ID)  ~ 'SRF',
+                                     grepl("DCM", sample_ID) ~ 'DCM',
+                                     grepl("MES", sample_ID) ~ 'MES')) %>%
+  left_join(meren)
+```
+
+## Prepare data for physeq
+```{r}
+# Spread data into matrices
+clstrs_df <- dcast.data.table(component ~ sample_ID, fun.aggregate = "sum", fill = 0, data = as.data.table(clstrs), value.var = "abun")
+
+# make sample_ID rownames
+clstrs_df <- as.data.frame(clstrs_df)
+row.names(clstrs_df) <- clstrs_df$component
+clstrs_df$component <- NULL
+
+contex <- as.data.frame(contex)
+row.names(contex) <- contex$sample_ID
+
+# Make the phyloseq object
+physeq <- phyloseq(otu_table(as.matrix(clstrs_df), taxa_are_rows = TRUE), sample_data(contex))
+```
+
+## Centered log-ratio transformation (CLR)
+```{r}
+library(microbiome)
+physeq_clr <- transform(physeq, 'clr')
+```
+
+## Remove clusters with mean proportion < 1e-5
+```{r}
+pop_taxa <- function(physeq, badTaxa){
+  allTaxa = taxa_names(physeq)
+  allTaxa <- allTaxa[(allTaxa %in% badTaxa)]
+  return(prune_taxa(allTaxa, physeq))
+}
+
+physeq_clr_filtered <- pop_taxa(physeq_clr, comp_list)
+```
+
+## Separate into component categories
+```{r}
+pop_taxa_1 <- function(physeq, badTaxa){
+  allTaxa = taxa_names(physeq)
+  allTaxa <- allTaxa[(allTaxa %in% badTaxa)]
+  return(prune_taxa(allTaxa, physeq))
+}
+
+unk_physeq <- pop_taxa_1(physeq_clr_filtered, unk)
+known_physeq <- pop_taxa_1(physeq_clr_filtered, knowns)
+all_physeq <- physeq_clr_filtered
+
+unk_physeq
+known_physeq
+all_physeq
+
+# save object
+save(unk_physeq, known_physeq, all_physeq, file = "~/Desktop/MarMic/msc_thesis/data/physeq_clr.RData")
+```
+
+# Load data to start PCA from here
+```{r}
+load(file = "~/Desktop/MarMic/msc_thesis/data/physeq_clr.RData")
+#load("/bioinf/projects/megx/UNKNOWNS/Matt/physeq_clr.RData")
+```
+
+# PCA
+```{r}
+unk_physeq_ord <- ordinate(unk_physeq, method = "RDA")
+k_physeq_ord <- ordinate(known_physeq, method = "RDA")
+all_physeq_ord <- ordinate(all_physeq, method = "RDA")
+```
+
+## 6. Examine PCA Residuals and Scree plot
+### Residuals
+```{r}
+# How to the residuals after transforming or scaling the compostional data?
+# Plot residuals
+r_k <- k_physeq_ord %>%
+  residuals() %>%
+  as_data_frame() %>%
+  rownames_to_column(var = "label") %>% 
+  as_tibble() %>% 
+  gather(clstr_name, counts, -label) %>%
+  dplyr::select(counts) %>%
+  as_tibble() %>%
+  gghistogram(x = "counts", fill = "lightgray", add = "mean", rug = TRUE, title = "Knowns") +
+  scale_y_sqrt()
+
+r_unk <- unk_physeq_ord %>%
+  residuals() %>%
+  as_data_frame() %>%
+  rownames_to_column(var = "label") %>% 
+  as_tibble() %>% 
+  gather(clstr_name, counts, -label) %>%
+  dplyr::select(counts) %>%
+  as_tibble() %>%
+  gghistogram(x = "counts", fill = "lightgray", add = "mean", rug = TRUE, title = "Unknowns") +
+  scale_y_sqrt()
+
+r_all <- all_physeq_ord %>%
+  residuals() %>%
+  as_data_frame() %>%
+  rownames_to_column(var = "label") %>% 
+  as_tibble() %>% 
+  gather(clstr_name, counts, -label) %>%
+  dplyr::select(counts) %>%
+  as_tibble() %>%
+  gghistogram(x = "counts", fill = "lightgray", add = "mean", rug = TRUE, title = "All") +
+  scale_y_sqrt()
+
+#r_eu + r_gu + r_k + r_unk + r_all + plot_layout(ncol = 3, nrow = 2)
+
+p_res <- ggarrange(r_unk, r_k, r_all, nrow = 1, ncol = 3)
+
+p_res <- annotate_figure(p = p_res, 
+                top = text_grob("TARA prokaryotic surface (CLR + PCA) \n residuals", color = "red", face = "bold", size = 20, hjust = 0.5))
+# Print
+p_res
+
+# save
+#ggsave(p_res, filename ="../../../../img/pca_res.png")
+```
+
+### Scree Plot
+```{r}
+scree_unk <- data.frame(x = unk_physeq_ord$CA$eig) %>% rownames_to_column(var = "PC") %>% dplyr::mutate(prop=x/sum(x)) %>% dplyr::select(-x) %>% top_n(n = 10)
+
+p_scree_unk <- ggplot(data = scree_unk %>% mutate(PC = fct_reorder(.desc = TRUE, PC, prop)), aes(x = PC, y = prop*100)) +
+  geom_bar(stat = "identity", fill = "indianred") +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14)) +
+  ggtitle("Unknowns") +
+  xlab("Principal components") +
+  ylab("Percent explained")
+
+scree_k <- data.frame(x = k_physeq_ord$CA$eig ) %>% rownames_to_column(var = "PC") %>% dplyr::mutate(prop=x/sum(x)) %>% dplyr::select(-x) %>% top_n(n = 10)
+
+p_scree_k <- ggplot(data = scree_k %>% mutate(PC = fct_reorder(.desc = TRUE, PC, prop)), aes(x = PC, y = prop*100)) +
+  geom_bar(stat = "identity", fill = "indianred") +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14)) +
+  ggtitle("Knowns") +
+  xlab("Principal components") +
+  ylab("Percent explained")
+
+scree_all <- data.frame(x = all_physeq_ord$CA$eig) %>% rownames_to_column(var = "PC") %>% dplyr::mutate(prop=x/sum(x)) %>% dplyr::select(-x) %>% top_n(n = 10)
+
+p_scree_all <- ggplot(data = scree_all %>% mutate(PC = fct_reorder(.desc = TRUE, PC, prop)), aes(x = PC, y = prop*100)) +
+  geom_bar(stat = "identity", fill = "indianred") +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14)) +
+  ggtitle("ALL") +
+  xlab("Principal components") +
+  ylab("Percent explained")
+
+p_scree <- ggarrange(p_scree_unk, p_scree_k, p_scree_all, nrow = 1, ncol = 3)
+
+p_scree <- annotate_figure(p = p_scree, 
+                top = text_grob("TARA prokaryotic surface (CLR + PCA) \n scree plot", color = "red", face = "bold", size = 20, hjust = 0.5))
+
+# print
+p_scree
+
+# save
+#ggsave(p_scree, filename = "../../../../img/pca_scree.png")
+```
+
+## 7. Plot Ordination
+### Color continuous variables
+```{r}
+# Plot Ordination (continuous variables)
+p_k <- plot_ordination(known_physeq, k_physeq_ord, color = "temperature") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        legend.position = "bottom") +
+  scale_color_viridis(option = "inferno") +
+  ggtitle("Knowns") 
+
+p_unk <- plot_ordination(unk_physeq, unk_physeq_ord, color = "temperature") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        legend.position = "bottom") +
+  scale_color_viridis(option = "inferno") +
+    ggtitle("Unknowns")
+
+p_all <- plot_ordination(all_physeq, all_physeq_ord, color = "temperature") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        legend.position = "bottom") +
+  scale_color_viridis(option = "inferno") +
+  ggtitle("All")
+
+a <- ggarrange(p_unk, p_k, p_all, nrow = 1, ncol = 3)
+
+g <- annotate_figure(p = a, 
+                top = text_grob("TARA prokaryotic surface (CLR + PCA)", color = "red", face = "bold", size = 20, hjust = 0.5))
+# print
+g
+
+# save
+#ggsave(g, filename = "../../../../img/tps_clr_pca.1e5.png")
+```
+
+### Categorical variables
+```{r}
+# Plot Ordination (categorical variables)
+p_k <- plot_ordination(known_physeq, k_physeq_ord, color = "depth_category") +
+  geom_convexhull(alpha = 0.3, fill = NA) +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        legend.position = "bottom") +
+    scale_fill_manual(values = c("#2A67A0", "#19A450", "#AA282F")) +
+    scale_color_manual(values = c("#2A67A0", "#19A450", "#AA282F")) +
+  guides(fill=guide_legend(title="New Legend Title")) +
+  scale_fill_discrete(name = "New Legend Title") +
+  ggtitle("Knowns") 
+
+p_unk <- plot_ordination(unk_physeq, unk_physeq_ord, color = "depth_category") +
+  geom_convexhull(alpha = 0.3, fill = NA) +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        legend.position = "bottom") +
+    ggtitle("Unknowns")
+
+p_all <- plot_ordination(all_physeq, all_physeq_ord, color = "depth_category") +
+  geom_convexhull(alpha = 0.3, fill = NA) +
+  theme_bw() +
+    scale_fill_discrete(name="Experimental\nCondition") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        legend.position = "bottom") +
+  ggtitle("All")
+
+a <- ggarrange(p_unk, p_k, p_all, nrow = 1, ncol = 3)
+
+g <- annotate_figure(p = a, 
+                top = text_grob("TARA prokaryotic surface (CLR + PCA)", color = "red", face = "bold", size = 20, hjust = 0.5))
+
+# print
+g
+
+#save
+#ggsave(g, filename = "../../../../img/tps_clr_pca.1e5.temperature.png")
+```
+
+## 8. Explore the Ordination
+
+Where are the cold samples at the bottom of the PCA from? Why do they not group with the MES cluster?
+```{r}
+unk_pca<- summary(unk_physeq_ord)
+
+unk_pca$sites %>% as.data.frame() %>% rownames_to_column(var = "sample_ID") %>% dplyr::select(sample_ID,PC1, PC2) %>% arrange(PC2) %>% head
+```
+Lowest 1-3 samples (in context of PC2) are from Southern Ocean. Station 84 was not sampled at DCM and MES. The Southern Ocean samples are located in the Antarctic Circumpolar Current. This is a unique current and may contribute to a different component composition.
+
+Station 93 is off the coast of Chile in the Southern Pacific. Station 82 is off the coast of Argentina in the South Atlantic. 
+
+Where is the Southern Ocean Station 85 MES?
+```{r}
+unk_pca<- summary(unk_physeq_beta_ord)
+
+unk_pca$sites %>% as.data.frame() %>% rownames_to_column(var = "sample_ID") %>% filter(grepl("TARA_085_MES_0.22-3", sample_ID))
+
+metadata <- as(sample_data(unk_physeq_beta_clr), "data.frame")
+
+metadata %>% filter(grepl("84", sample_ID)  | grepl("85", sample_ID)) %>% dplyr::select(sample_ID, temperature)
+
+unk_pca$sites
+```
+Station 85 MES is clustered with the rest of the MES.
+
+Statistical tests
+```{r}
+# extract metadata
+metadata <- as(sample_data(unk_physeq), "data.frame")
+
+# PERMANOVA
+# temperature
+# Unk
+adonis(distance(unk_physeq, method="euclidean") ~ temperature,
+       data = metadata)
+# Known
+adonis(distance(known_physeq, method="euclidean") ~ temperature,
+       data = metadata)
+# All
+adonis(distance(all_physeq, method="euclidean") ~ temperature,
+       data = metadata)
+
+# PERMANOVA
+# temperature
+# Unk
+adonis(distance(unk_physeq, method="euclidean") ~ depth_category,
+       data = metadata)
+# Known
+adonis(distance(known_physeq, method="euclidean") ~ depth_category,
+       data = metadata)
+# All
+adonis(distance(all_physeq, method="euclidean") ~ depth_category,
+       data = metadata)
+
+# Aitchison distance
+unk_physeq_euc <- phyloseq::distance(unk_physeq, method = "euclidean")
+known_physeq_euc <- phyloseq::distance(known_physeq, method = "euclidean")
+all_physeq_euc <- phyloseq::distance(all_physeq, method = "euclidean")
+
+
+# investigate dispersion in regards to temperature
+beta_unk <- betadisper(unk_physeq_euc, metadata$depth_category)
+permutest(beta_unk)
+
+beta_known <- betadisper(known_physeq_euc, metadata$depth_category)
+permutest(beta_known)
+
+beta_all <- betadisper(all_physeq_euc, metadata$depth_category)
+permutest(beta_all)
+```

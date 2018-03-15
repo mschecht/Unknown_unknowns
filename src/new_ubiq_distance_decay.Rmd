@@ -1,0 +1,435 @@
+---
+title: "Distance-Decay Boxplot"
+author: "Matthew S. Schechter"
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+This notebook describes the workflow for the distance-decay analysis of the TARA ocean prokaryotic, surface samples. We want to exploration the relationship between genetic distance and physical distance. Are samples more genetically similar if they are closer to eachother?
+
+To reproduce this workflow upload `clstrs_tara_f1.RData` from figshare (10.6084/m9.figshare.5979658).
+
+## Set environment
+```{r}
+# Load Libraries
+library(tidyverse)
+library(phyloseq)
+library(data.table)
+library(vegan)
+library(RSQLite)
+library(ggpubr)
+library(GGally)
+library(simba)
+library(geosphere)
+library(rworldmap)
+library(scales)
+library(sqldf)
+library(RSQLite)
+```
+
+## Load data
+
+### Component abundance data
+```{r}
+load("~/Desktop/MarMic/msc_thesis/data/clstrs_tara_f1.RData")
+clstrs <- clstrs_tps_stats_f1
+```
+
+### Contextual data
+```{r}
+# Connect to SQLite databases to read in TARA contextual data.
+
+# USAGE for RSQLite::dbConnect()
+# - drv = typle of databse connection
+# - dbname = path to database
+db <- RSQLite::dbConnect(drv = SQLite(), dbname = "../../../databases/contextual_data.db")
+
+# list contents of database
+dbListTables(db)
+
+# extract TARA Oceans contextual data from database
+TARA_contex <- as_tibble(dbReadTable(db, "TARA_contex"))
+
+# Disconnect from db
+dbDisconnect(db)
+
+# Filter contextual data for correct samples
+contex <- TARA_contex %>% filter(sample_ID %in% clstrs$sample_ID)
+
+# Add meren sites and temperature range classification
+meren <- read_tsv("~/Desktop/MarMic/msc_thesis/meren/tom_tara_samples.tsv", col_names = TRUE) %>% rename(sample_ID = tara_sample) %>% separate(col = tom_sample, into = c("meren_region","meren_stuff"), sep = "_", remove = FALSE) %>% 
+  dplyr::select(sample_ID, meren_region)
+
+save(meren, file = "~/Desktop/MarMic/msc_thesis/data/meren.RData")
+
+contex <- contex %>%
+  mutate(t_range = ifelse(temperature < 19, "low",
+                          ifelse(temperature >= 19 & temperature < 26,
+                                 "medium", "high"))) %>%
+  mutate(depth_category = case_when( grepl("SRF", sample_ID)  ~ 'SRF',
+                                     grepl("DCM", sample_ID) ~ 'DCM',
+                                     grepl("MES", sample_ID) ~ 'MES')) %>%
+  left_join(meren)
+```
+
+
+## Prep data for analysis
+
+Regions used by [Delmont et. al., 2017](https://www.biorxiv.org/content/early/2017/04/23/129791) were used to separate the TARA samples into different regions.
+
+```{r}
+# load abundance data to repeat analysis
+# location on server "/bioinf/projects/megx/UNKNOWNS/Matt/TARA_clstrs_all_prok_meanprop.RData"
+#load("~/Desktop/MarMic/msc_thesis/data/clstrs_tara_f1.RData")
+#load("~/Downloads/TARA_contex (1).RData")
+
+# Spread data into abundance matrix
+clstrs <- clstrs_tps_stats_f1 %>%
+  dplyr::select(sample_ID, component, abun) %>%
+  spread(sample_ID, abun, fill = 0)
+
+# make sample_ID rownames
+clstrs <- as.data.frame(clstrs)
+row.names(clstrs) <- clstrs$component
+clstrs$component <- NULL
+
+# Select component with mean proportion > 1e-5
+comps_sel_meanprop <- clstrs_tps_stats_f1 %>%
+  filter(mean_proportion >= 1e-5)
+
+# Prep for phyloseq
+clstrs <- as.matrix(clstrs)
+TARA_contex_df <- contex
+rownames(TARA_contex_df) <- TARA_contex_df$sample_ID
+
+# Make phyloseq object
+clstrs_physeq <- phyloseq(otu_table(clstrs, taxa_are_rows = TRUE), sample_data(TARA_contex_df))
+
+#####################################################
+# Cumulative Sum Scaling normalisation (CSS) function
+#####################################################
+# Make a cssTrans function
+cssTrans <- function(f.physeq.p = f.physeq.p, norm = norm, log = log){
+  require(metagenomeSeq)
+  if (taxa_are_rows(f.physeq.p)) {
+    f.physeq.p <- (f.physeq.p)
+  }else{
+    f.physeq.p <- t(f.physeq.p)
+  }
+  
+  OTU <- as((otu_table(f.physeq.p, taxa_are_rows = TRUE)), "matrix")
+  MGS <- newMRexperiment(
+    counts = (OTU)
+  )
+  MGS <- cumNorm(MGS, p = cumNormStat(MGS))
+  f.norm.p <- f.physeq.p
+  otu_table(f.norm.p) <- otu_table((as.matrix(MRcounts(
+    MGS,
+    norm = norm,
+    log = log,
+    sl = median(unlist(normFactors(MGS)))
+  ))), taxa_are_rows = T)
+  return(f.norm.p)
+}
+
+# Let's CSS transform the data
+clstrs_physeq_css <- cssTrans(clstrs_physeq, norm = TRUE, log = TRUE)
+
+# Select high abundance clusters
+clstrs_physeq_css_meanprop <- prune_taxa(comps_sel_meanprop$component, clstrs_physeq_css)
+
+clstrs <- comps_sel_meanprop
+
+# Filter contextual data for correct samples
+contex <- TARA_contex %>% tbl_df() %>% dplyr::filter(sample_ID %in% clstrs$sample_ID)
+
+# Add meren sites and temperature range classification
+meren <- read_tsv("~/Desktop/MarMic/msc_thesis/meren/tom_tara_samples.tsv", col_names = TRUE) %>% rename(sample_ID = tara_sample) %>% separate(col = tom_sample, into = c("meren_region","meren_stuff"), sep = "_", remove = FALSE)
+
+# Add the regions to contextual data
+contex <- contex %>% left_join(meren)
+
+# Separate the contextual data into the regions
+# Atlantic
+contex_atl <- contex %>% filter(meren_region == "ANW" | meren_region == "ANE" | meren_region == "ASW" | meren_region == "ASE") %>% mutate(meren_large_region = "atl") %>%
+  filter(latitude > 0)
+
+# Pacific
+contex_pac <- contex %>% filter(meren_region == "PON" | meren_region == "POSW" | meren_region == "PSE") %>% mutate(meren_large_region = "pca")
+
+# Indian
+contex_in <- contex %>% filter(meren_region == "ION" | meren_region == "IOS") %>% mutate(meren_large_region = "in")
+
+# Make 1 coordinate object
+all_meren_coor <- bind_rows(contex_atl, contex_pac, contex_in) %>% 
+  dplyr::select(sample_ID, latitude, longitude, meren_large_region)
+  
+# number of samples
+n_samples <- clstrs  %>%
+  dplyr::select(sample_ID) %>%
+  unique() %>%
+  count()
+
+# If a component is found in all samples then it is ubiquitous
+ubiq <- clstrs %>% group_by(component) %>% count %>% filter(n >= n_samples)
+
+# If a component is NOT found in all samples then its is non-ubiquitous
+nonubiq <- clstrs %>% group_by(component) %>% count %>% filter(n < n_samples)
+```
+
+## Distance decay calculations
+```{r}
+TARA_coords <- TARA_contex %>% 
+  filter(sample_ID %in% clstrs$sample_ID) %>%
+  dplyr::select(sample_ID, longitude, latitude) %>%
+  arrange(desc(sample_ID)) %>% 
+  as.data.frame() %>%
+  column_to_rownames(var = "sample_ID")
+
+TARA_dm_hav <- geosphere::distm(TARA_coords, fun=geosphere::distHaversine)
+rownames(TARA_dm_hav) <- rownames(TARA_coords)
+colnames(TARA_dm_hav) <- rownames(TARA_coords)
+TARA_dm_hav_df <- broom::tidy(as.dist(TARA_dm_hav))
+
+# All
+clstrs_physeq_css_meanprop_bc_all <- vegan::vegdist(phyloseq:::veganifyOTU(clstrs_physeq_css_meanprop))
+clstrs_physeq_css_meanprop_bc_all_df <- broom::tidy(as.dist(as.matrix(clstrs_physeq_css_meanprop_bc_all)[rownames(TARA_coords),rownames(TARA_coords)]))
+dis_gm_all <- clstrs_physeq_css_meanprop_bc_all_df %>% left_join(TARA_dm_hav_df, by = c("item1", "item2"))
+colnames(dis_gm_all) <- c("loc1","loc2","value_dis","value_geo")
+
+# EU
+clstrs_comp_eu <- clstrs %>% filter(class == "eu") %>% .$component %>% unique
+clstrs_physeq_css_meanprop_bc_eu <- vegan::vegdist(phyloseq:::veganifyOTU(prune_taxa(clstrs_comp_eu, clstrs_physeq_css_meanprop)))
+clstrs_physeq_css_meanprop_bc_eu_df <- broom::tidy(as.dist(as.matrix(clstrs_physeq_css_meanprop_bc_eu)[rownames(TARA_coords),rownames(TARA_coords)]))
+dis_gm_eu <- clstrs_physeq_css_meanprop_bc_eu_df %>% left_join(TARA_dm_hav_df, by = c("item1", "item2"))
+colnames(dis_gm_eu) <- c("loc1","loc2","value_dis","value_geo")
+
+## Ubiquitous
+clstrs_comp_eu_ubi <- purrr::keep(clstrs_comp_eu, clstrs_comp_eu %in%  ubiq$component)
+clstrs_physeq_css_meanprop_bc_eu_ubi <- vegan::vegdist(phyloseq:::veganifyOTU(prune_taxa(clstrs_comp_eu_ubi, clstrs_physeq_css_meanprop)))
+clstrs_physeq_css_meanprop_bc_eu_ubi_df <- broom::tidy(as.dist(as.matrix(clstrs_physeq_css_meanprop_bc_eu_ubi)[rownames(TARA_coords),rownames(TARA_coords)]))
+dis_gm_eu_ubi <- clstrs_physeq_css_meanprop_bc_eu_ubi_df %>% left_join(TARA_dm_hav_df, by = c("item1", "item2"))
+colnames(dis_gm_eu_ubi) <- c("loc1","loc2","value_dis","value_geo")
+
+## NON-Ubiquitous
+clstrs_comp_eu_nonubi <- purrr::keep(clstrs_comp_eu, clstrs_comp_eu %in%  nonubiq$component)
+clstrs_physeq_css_meanprop_bc_eu_nonubi <- vegan::vegdist(phyloseq:::veganifyOTU(prune_taxa(clstrs_comp_eu_nonubi, clstrs_physeq_css_meanprop)))
+clstrs_physeq_css_meanprop_bc_eu_nonubi_df <- broom::tidy(as.dist(as.matrix(clstrs_physeq_css_meanprop_bc_eu_nonubi)[rownames(TARA_coords),rownames(TARA_coords)]))
+dis_gm_eu_nonubi <- clstrs_physeq_css_meanprop_bc_eu_nonubi_df %>% left_join(TARA_dm_hav_df, by = c("item1", "item2"))
+colnames(dis_gm_eu_nonubi) <- c("loc1","loc2","value_dis","value_geo")
+
+# GU
+clstrs_comp_gu <- clstrs %>% filter(class == "gu") %>% .$component %>% unique
+clstrs_physeq_css_meanprop_bc_gu <- vegan::vegdist(phyloseq:::veganifyOTU(prune_taxa(clstrs_comp_gu, clstrs_physeq_css_meanprop)))
+clstrs_physeq_css_meanprop_bc_gu_df <- broom::tidy(as.dist(as.matrix(clstrs_physeq_css_meanprop_bc_gu)[rownames(TARA_coords),rownames(TARA_coords)]))
+dis_gm_gu <- clstrs_physeq_css_meanprop_bc_gu_df %>% left_join(TARA_dm_hav_df, by = c("item1", "item2"))
+colnames(dis_gm_gu) <- c("loc1","loc2","value_dis","value_geo")
+
+## Ubiquitous
+clstrs_comp_gu_ubi <- purrr::keep(clstrs_comp_gu, clstrs_comp_gu %in%  ubiq$component)
+clstrs_physeq_css_meanprop_bc_gu_ubi <- vegan::vegdist(phyloseq:::veganifyOTU(prune_taxa(clstrs_comp_gu_ubi, clstrs_physeq_css_meanprop)))
+clstrs_physeq_css_meanprop_bc_gu_ubi_df <- broom::tidy(as.dist(as.matrix(clstrs_physeq_css_meanprop_bc_gu_ubi)[rownames(TARA_coords),rownames(TARA_coords)]))
+dis_gm_gu_ubi <- clstrs_physeq_css_meanprop_bc_eu_ubi_df %>% left_join(TARA_dm_hav_df, by = c("item1", "item2"))
+colnames(dis_gm_gu_ubi) <- c("loc1","loc2","value_dis","value_geo")
+
+## NON-Ubiquitous
+clstrs_comp_gu_nonubi <- purrr::keep(clstrs_comp_gu, clstrs_comp_gu %in%  nonubiq$component)
+clstrs_physeq_css_meanprop_bc_gu_nonubi <- vegan::vegdist(phyloseq:::veganifyOTU(prune_taxa(clstrs_comp_gu_nonubi, clstrs_physeq_css_meanprop)))
+clstrs_physeq_css_meanprop_bc_gu_nonubi_df <- broom::tidy(as.dist(as.matrix(clstrs_physeq_css_meanprop_bc_gu_nonubi)[rownames(TARA_coords),rownames(TARA_coords)]))
+dis_gm_gu_nonubi <- clstrs_physeq_css_meanprop_bc_gu_nonubi_df %>% left_join(TARA_dm_hav_df, by = c("item1", "item2"))
+colnames(dis_gm_gu_nonubi) <- c("loc1","loc2","value_dis","value_geo")
+
+# unk
+clstrs_comp_unk <- clstrs %>% filter(class == "eu" | class == "gu") %>% .$component %>% unique
+clstrs_physeq_css_meanprop_bc_unk <- vegan::vegdist(phyloseq:::veganifyOTU(prune_taxa(clstrs_comp_unk, clstrs_physeq_css_meanprop)))
+clstrs_physeq_css_meanprop_bc_unk_df <- broom::tidy(as.dist(as.matrix(clstrs_physeq_css_meanprop_bc_unk)[rownames(TARA_coords),rownames(TARA_coords)]))
+dis_gm_unk <- clstrs_physeq_css_meanprop_bc_unk_df %>% left_join(TARA_dm_hav_df, by = c("item1", "item2"))
+colnames(dis_gm_unk) <- c("loc1","loc2","value_dis","value_geo")
+
+## Ubiquitous
+clstrs_comp_unk_ubi <- purrr::keep(clstrs_comp_unk, clstrs_comp_unk %in%  ubiq$component)
+clstrs_physeq_css_meanprop_bc_unk_ubi <- vegan::vegdist(phyloseq:::veganifyOTU(prune_taxa(clstrs_comp_unk_ubi, clstrs_physeq_css_meanprop)))
+clstrs_physeq_css_meanprop_bc_unk_ubi_df <- broom::tidy(as.dist(as.matrix(clstrs_physeq_css_meanprop_bc_unk_ubi)[rownames(TARA_coords),rownames(TARA_coords)]))
+dis_gm_unk_ubi <- clstrs_physeq_css_meanprop_bc_unk_ubi_df %>% left_join(TARA_dm_hav_df, by = c("item1", "item2"))
+colnames(dis_gm_unk_ubi) <- c("loc1","loc2","value_dis","value_geo")
+
+## NON-Ubiquitous
+clstrs_comp_unk_nonubi <- purrr::keep(clstrs_comp_unk, clstrs_comp_unk %in%  nonubiq$component)
+clstrs_physeq_css_meanprop_bc_unk_nonubi <- vegan::vegdist(phyloseq:::veganifyOTU(prune_taxa(clstrs_comp_unk_nonubi, clstrs_physeq_css_meanprop)))
+clstrs_physeq_css_meanprop_bc_unk_nonubi_df <- broom::tidy(as.dist(as.matrix(clstrs_physeq_css_meanprop_bc_unk_nonubi)[rownames(TARA_coords),rownames(TARA_coords)]))
+dis_gm_unk_nonubi <- clstrs_physeq_css_meanprop_bc_unk_nonubi_df %>% left_join(TARA_dm_hav_df, by = c("item1", "item2"))
+colnames(dis_gm_unk_nonubi) <- c("loc1","loc2","value_dis","value_geo")
+
+# known
+clstrs_comp_known <- clstrs %>% filter(class == "k" | class == "kwp") %>% .$component %>% unique
+clstrs_physeq_css_meanprop_bc_known <- vegan::vegdist(phyloseq:::veganifyOTU(prune_taxa(clstrs_comp_known, clstrs_physeq_css_meanprop)))
+clstrs_physeq_css_meanprop_bc_known_df <- broom::tidy(as.dist(as.matrix(clstrs_physeq_css_meanprop_bc_known)[rownames(TARA_coords),rownames(TARA_coords)]))
+dis_gm_known <- clstrs_physeq_css_meanprop_bc_known_df %>% left_join(TARA_dm_hav_df, by = c("item1", "item2"))
+colnames(dis_gm_known) <- c("loc1","loc2","value_dis","value_geo")
+
+## Ubiquitous
+
+clstrs_comp_known_ubi <- purrr::keep(clstrs_comp_known, clstrs_comp_known %in%  ubiq$component)
+clstrs_physeq_css_meanprop_bc_known_ubi <- vegan::vegdist(phyloseq:::veganifyOTU(prune_taxa(clstrs_comp_known_ubi, clstrs_physeq_css_meanprop)))
+clstrs_physeq_css_meanprop_bc_known_ubi_df <- broom::tidy(as.dist(as.matrix(clstrs_physeq_css_meanprop_bc_known_ubi)[rownames(TARA_coords),rownames(TARA_coords)]))
+dis_gm_known_ubi <- clstrs_physeq_css_meanprop_bc_known_ubi_df %>% left_join(TARA_dm_hav_df, by = c("item1", "item2"))
+colnames(dis_gm_known_ubi) <- c("loc1","loc2","value_dis","value_geo")
+
+## NON-Ubiquitous
+clstrs_comp_known_nonubi <- purrr::keep(clstrs_comp_known, clstrs_comp_known %in%  nonubiq$component)
+clstrs_physeq_css_meanprop_bc_known_nonubi <- vegan::vegdist(phyloseq:::veganifyOTU(prune_taxa(clstrs_comp_known_nonubi, clstrs_physeq_css_meanprop)))
+clstrs_physeq_css_meanprop_bc_known_nonubi_df <- broom::tidy(as.dist(as.matrix(clstrs_physeq_css_meanprop_bc_known_nonubi)[rownames(TARA_coords),rownames(TARA_coords)]))
+dis_gm_known_nonubi <- clstrs_physeq_css_meanprop_bc_known_nonubi_df %>% left_join(TARA_dm_hav_df, by = c("item1", "item2"))
+colnames(dis_gm_known_nonubi) <- c("loc1","loc2","value_dis","value_geo")
+```
+
+## Choose which categories you want to show
+```{r}
+##########
+# CHOOSE ONE!!!!!!!!!
+###########
+
+# Ubiquitous vs non-ubiquitous
+all_dist <- bind_rows(#dis_gm_eu %>% mutate(class = "Environmental unknown"),
+                      dis_gm_eu_ubi %>% mutate(class = "EU ubiquitous"),
+                      dis_gm_eu_nonubi %>% mutate(class = "EU non-ubiquitous"),
+                      #dis_gm_gu %>% mutate(class = "Genomic unknown"),
+                      #dis_gm_unk %>% mutate(class = "Unknown"),
+                      dis_gm_unk_ubi %>% mutate(class = "Unknown ubiquitous"),
+                      dis_gm_unk_nonubi %>% mutate(class = "Unknown non-ubiquitous"),
+                      #dis_gm_known %>% mutate(class = "Known"),
+                      dis_gm_known_ubi %>% mutate(class = "Known ubiquotous"), 
+                      dis_gm_known_nonubi %>% mutate(class = "Known non-ubiquotous"))
+
+# Combined categories
+all_dist_comb <- bind_rows(#dis_gm_eu %>% mutate(class = "Environmental unknown"),
+                      #dis_gm_eu_ubi %>% mutate(class = "EU ubiquitous"),
+                      #dis_gm_eu_nonubi %>% mutate(class = "EU non-ubiquitous"),
+                      #dis_gm_gu %>% mutate(class = "Genomic unknown"),
+                      dis_gm_unk %>% mutate(class = "Unknown"),
+                      #dis_gm_unk_ubi %>% mutate(class = "Unknown ubiquitous"),
+                      #dis_gm_unk_nonubi %>% mutate(class = "Unknown non-ubiquitous"),
+                      dis_gm_known %>% mutate(class = "Known"),
+                      #dis_gm_known_ubi %>% mutate(class = "Known ubiquotous"), 
+                      #dis_gm_known_nonubi %>% mutate(class = "Known non-ubiquotous"),
+                      dis_gm_all %>% mutate(class = "All"))
+
+# Filter for regions
+atlantic <- all_dist %>%
+  filter(loc1 %in% contex_atl$sample_ID, loc2 %in% contex_atl$sample_ID)
+pacific <- all_dist %>%
+  filter(loc1 %in% contex_pac$sample_ID, loc2 %in% contex_pac$sample_ID)
+indian <- all_dist %>%
+  filter(loc1 %in% contex_in$sample_ID, loc2 %in% contex_in$sample_ID)
+
+atlantic_comb <- all_dist_comb %>%
+  filter(loc1 %in% contex_atl$sample_ID, loc2 %in% contex_atl$sample_ID)
+pacific_comb <- all_dist_comb %>%
+  filter(loc1 %in% contex_pac$sample_ID, loc2 %in% contex_pac$sample_ID)
+indian_comb <- all_dist_comb %>%
+  filter(loc1 %in% contex_in$sample_ID, loc2 %in% contex_in$sample_ID)
+```
+
+## Visualize
+```{r}
+# Plot distance-decay
+
+p1 <- ggplot(atlantic, aes(x = (value_geo/1000), y = value_dis, color = class)) +
+  geom_point(alpha = 0.5) + 
+  stat_smooth() +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
+        legend.position = "bottom") +
+  scale_x_continuous(labels = scales::comma) +
+  ylim(0, 1) +
+  ggtitle("Atlantic") +
+  xlab("Geographical distance (km)") +
+  ylab("Bray-Curtis dissimmilarity")
+
+p2 <- ggplot(pacific, aes(x = (value_geo/1000), y = value_dis, color = class)) +
+  geom_point(alpha = 0.5) + 
+  stat_smooth() +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
+        legend.position = "bottom") +
+  scale_x_continuous(labels = scales::comma) +
+  ylim(0, 1) +
+  ggtitle("Pacific") +
+  xlab("Geographical distance (km)") +
+  ylab("Bray-Curtis dissimmilarity")
+
+
+p3 <- ggplot(indian, aes(x = (value_geo/1000), y = value_dis, color = class)) +
+  geom_point(alpha = 0.5) + 
+  stat_smooth() +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
+        legend.position = "bottom") +
+  scale_x_continuous(labels = scales::comma) +
+  ylim(0, 1) +
+  ggtitle("Indian") +
+  xlab("Geographical distance (km)") +
+  ylab("Bray-Curtis dissimmilarity")
+
+# Box-plot of BC distance
+p1a <- ggboxplot(data = atlantic, x = "class", y = "value_dis", color = "class", add = "jitter") +
+  ylim(0, 1) +
+  labs(title = "") +
+  xlab(label = "Category") +
+  ylab(label = "Bray-Curtis dissimilarity")  +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "")
+
+p2a <- ggboxplot(data = pacific, x = "class", y = "value_dis", color = "class", add = "jitter") +
+  ylim(0, 1) +
+  labs(title = "") +
+  xlab(label = "Category") +
+  ylab(label = "Bray-Curtis dissimilarity") +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "")
+
+p3a <- ggboxplot(data = indian, x = "class", y = "value_dis", color = "class", add = "jitter") +
+  ylim(0, 1) +
+  labs(title = "") +
+  xlab(label = "Category") +
+  ylab(label = "Bray-Curtis dissimilarity") +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "")
+
+ggarrange(p1, p2, p3, p1a, p2a, p3a, labels = c("A)", "B)", "C)", "D)", "E)", "F)"), nrow = 2, ncol = 3) %>%
+  annotate_figure(top = text_grob("TARA prokaryotic surface distance-decay", color = "red", face = "bold", size = 20, hjust = 0.5))
+```
+
+
+## Map of regions
+```{r}
+map.world <- map_data(map="world")
+
+ggplot() +
+  geom_map(data=map.world, map=map.world, aes(map_id=region, x=long, y=lat)) +
+  geom_point(data = all_meren_coor, aes(x=longitude, y=latitude, color = meren_large_region), size = 5) +
+  theme_bw() +
+  scale_size_manual(values = c(10,1)) +
+  scale_shape_manual(values = c(4,19)) +
+  theme(legend.position = "bottom",
+        axis.text =  element_text()) +
+  ggtitle(label = "Distance-decay surface samples")
+  xlab("") +
+  ylab("") +
+  scale_x_continuous(breaks = c(-100, 0, 100))
+  
+  ggplot() +
+  geom_map(data=map.world, map=map.world, aes(map_id=region, x=long, y=lat)) +
+  geom_point(data = TARA_coor, aes(x=longitude, y=latitude), size = 2, color = 'darkblue') +
+  theme_bw() +
+  scale_size_manual(values = c(10,1)) +
+  scale_shape_manual(values = c(4,19)) +
+  theme(legend.position = "bottom",
+        axis.text =  element_text()) +
+  ggtitle(label = "Distance-decay surface samples")
+  xlab("") +
+  ylab("") +
+  scale_x_continuous(breaks = c(-100, 0, 100))
+```
+

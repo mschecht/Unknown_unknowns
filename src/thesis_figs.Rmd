@@ -1,0 +1,1191 @@
+---
+title: "Final thesis figures"
+output: html_notebook
+author: "Matthew S. Schechter"
+editor_options: 
+  chunk_output_type: console
+---
+
+This notebook shows all the beautifying steps for the final images of this thesis.
+
+To reproduce these images up load the following data from figshare (10.6084/m9.figshare.5979658):
+- `filtering.RData`
+- `ordination.RData`
+- `niche_breadth.RData`
+- `disdecay.RData`
+ 
+# 1. Panel of component filtering
+```{r}
+# Save plotting object
+#save(clstrs_tp_counts, clstrs_tps_counts, clstrs_tp_stats_f1, clstrs_tps_stats_f1,  file = "/Users/mattschechter/Desktop/MarMic/msc_thesis/data/plot_data/filtering.RData")
+load(file = "/Users/mattschechter/Desktop/MarMic/msc_thesis/data/plot_data/filtering.RData")
+```
+
+
+Low count samples
+```{r}
+library(tidyverse)
+library(sitools)
+library(ggpubr)
+# TP
+# Calculate the MAD and median of the counts
+tp_c_t <- median(clstrs_tp_counts$counts) - 1.5*stats::mad(clstrs_tp_counts$counts, constant = 1)
+tp_c_t_m <- median(clstrs_tp_counts$counts)
+
+# TPS
+tps_c_t <- median(clstrs_tps_counts$counts) - 1.5*stats::mad(clstrs_tps_counts$counts, constant = 1)
+tps_c_t_m <- median(clstrs_tps_counts$counts)
+
+# TP
+clstrs_tp_counts <- clstrs_tp_counts %>% mutate(class = case_when(counts >= tp_c_t ~ "Kept",
+                                                                  counts < tp_c_t ~ "Discarded"),
+                                                class = fct_relevel(class, c("Kept", "Discarded")))
+
+# TPS
+clstrs_tps_counts <- clstrs_tps_counts %>% mutate(class = case_when(counts >= tps_c_t ~ "Kept",
+                                                                  counts < tps_c_t ~ "Discarded"),
+                                                  class = fct_relevel(class, c("Kept", "Discarded")))
+
+
+
+a <- ggplot(clstrs_tp_counts %>% mutate(sample_ID = fct_reorder(sample_ID, counts)), aes(sample_ID, counts/1e6, fill = class, color = class)) +
+  #geom_histogram(bins = nclass.FD(test.counts$counts), color = "white", size = 0.1) +
+  geom_bar(stat = "identity", width = 1) +
+  geom_hline(yintercept = tp_c_t/1e6, linetype = "dashed", size = 0.5, color = "#E8512B") +
+  #geom_hline(yintercept = tp_c_t_m/1e6, linetype = "dashed", size = 0.5) +
+  scale_y_continuous(labels = function(x) paste0(x,"M")) +
+  scale_fill_manual(values = c("#3A3A3A" ,"#CB566A")) +
+  scale_color_manual(values = c("#3A3A3A" ,"#CB566A")) +
+  theme_light() +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        legend.title = element_blank()) +
+  ggtitle("Prokaryotic") +
+  ylab("Cluster counts") +
+  xlab(paste0("TARA samples (", clstrs_tp_counts$sample_ID %>% length() ,")"))
+
+b <- ggplot(clstrs_tps_counts %>% mutate(sample_ID = fct_reorder(sample_ID, counts)), aes(sample_ID, counts/1e6, fill = class, color = class)) +
+  #geom_histogram(bins = nclass.FD(test.counts$counts), color = "white", size = 0.1) +
+  geom_bar(stat = "identity", width = 1) +
+  geom_hline(yintercept = tps_c_t/1e6, linetype = "dashed", size = 0.5, color = "#E8512B") +
+  #geom_hline(yintercept = tps_c_t_m/1e6, linetype = "dashed", size = 0.5) +
+  scale_y_continuous(labels = function(x) paste0(x,"M")) +
+  scale_fill_manual(values = c("#3A3A3A" ,"#CB566A")) +
+  scale_color_manual(values = c("#3A3A3A" ,"#CB566A")) +
+  theme_light() +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        legend.title = element_blank()) +
+  ggtitle("Prokaryotic surface") +
+  ylab("Cluster counts") +
+  xlab(paste0("TARA samples (", clstrs_tps_counts$sample_ID %>% length() ,")"))
+
+ggarrange(a,b, ncol = 2, nrow = 1, common.legend = TRUE, labels = "AUTO") 
+
+```
+
+Sparsity and others
+```{r}
+percent_occurrence <- seq(0, 1, 0.2)
+library(pbmcapply)
+meanprop_filtering <- function(X, Y) { 
+  df <- as_tibble(Y) %>%
+    ungroup() %>%
+    dplyr::select(sample_ID, component, abun, mean_proportion) %>%
+    filter(X <= mean_proportion) %>%
+    summarise(mean_prop = X, 
+              n_clstrs = length(unique(component)), 
+              n_samples = length(unique(sample_ID)),
+              no_zero = sum(abun > 0), 
+              sparsity = 1 - (no_zero/(n_clstrs * n_samples)),
+              total_counts = sum(abun))
+  return(df)  
+}
+
+meanprops <- c(1e-6,1e-5,1e-4,1e-3,1e-2)
+
+# apply function
+clstrs_tp_stats_filtered_1_prev <- bind_rows(pbmclapply(X = meanprops, FUN = meanprop_filtering, Y = clstrs_tp_stats_f1))
+clstrs_tps_stats_filtered_1_prev <- bind_rows(pbmclapply(X = meanprops, FUN = meanprop_filtering, Y = clstrs_tps_stats_f1))
+
+
+
+
+
+# Tidy data via gather (melt)
+clstrs_tp_stats_filtered_1_prev_l <- clstrs_tp_stats_filtered_1_prev %>%
+  dplyr::select(mean_prop, n_samples, n_clstrs, total_counts, sparsity) %>%
+  rename(Samples = n_samples, Clusters = n_clstrs, Counts = total_counts, Sparsity = sparsity) %>%
+  gather(Cluster_stats, value, -mean_prop)
+
+clstrs_tps_stats_filtered_1_prev_l <- clstrs_tps_stats_filtered_1_prev %>%
+  dplyr::select(mean_prop, n_samples, n_clstrs, total_counts, sparsity) %>%
+  rename(Samples = n_samples, Clusters = n_clstrs, Counts = total_counts, Sparsity = sparsity) %>%
+  gather(Cluster_stats, value, -mean_prop)
+
+library(tidyverse)
+library(cowplot)
+
+
+# From http://www.moeding.net/archives/32-Metric-prefixes-for-ggplot2-scales.html
+FormatSI <- function(x, ...) {
+  # Format a vector of numeric values according to the
+  # International System of Units.
+  # http://en.wikipedia.org/wiki/SI_prefix
+  #
+  # Args:
+  #   x  : A vector of numeric values
+  #   ...: Remaining args passed to format()
+  #
+  # Returns:
+  #   A vector of strings using SI prefix notation
+  #
+  # Bugs:
+  #   Does not (yet) work with small (<1) numbers
+  #
+  scale.frac <- 1000
+  scale.unit <- c("k", "M", "G", "T", "P", "E", "Z", "Y")
+  
+  # Start with empty prefixes
+  p <- rep(" ", length(x))
+  
+  # Divide by scale.frac and store scale.unit if value is
+  # large enough. Repeat for all units.
+  for(i in 1:length(scale.unit)) {
+    p[x >= scale.frac] <- scale.unit[i]
+    x[x >= scale.frac] <- x[x >= scale.frac] / scale.frac
+  }
+  
+  return(paste(format(round(x,1), trim=TRUE, scientific=FALSE, ...), p, sep = ""))
+}
+
+# TARA prokaryotic all depths
+spar <- clstrs_tp_stats_filtered_1_prev_l %>% filter(Cluster_stats == "Sparsity")
+f_spar <- approxfun(spar$mean_prop, spar$value)
+
+samp <- clstrs_tp_stats_filtered_1_prev_l %>% filter(Cluster_stats == "Samples")
+f_samp <- approxfun(samp$mean_prop, samp$value)
+
+counts <- clstrs_tp_stats_filtered_1_prev_l %>% filter(Cluster_stats == "Counts")
+f_counts <- approxfun(counts$mean_prop, counts$value)
+
+clusters <- clstrs_tp_stats_filtered_1_prev_l %>% filter(Cluster_stats == "Clusters")
+f_clusters <- approxfun(clusters$mean_prop, clusters$value)
+
+# TARA prokaryotic, surface samples
+spar_tps <- clstrs_tps_stats_filtered_1_prev_l %>% filter(Cluster_stats == "Sparsity")
+f_spar_tps <- approxfun(spar_tps$mean_prop, spar_tps$value)
+
+samp_tps <- clstrs_tps_stats_filtered_1_prev_l %>% filter(Cluster_stats == "Samples")
+f_samp_tps <- approxfun(samp_tps$mean_prop, samp_tps$value)
+
+counts_tps <- clstrs_tps_stats_filtered_1_prev_l %>% filter(Cluster_stats == "Counts")
+f_counts_tps <- approxfun(counts_tps$mean_prop, counts_tps$value)
+
+clusters_tps <- clstrs_tps_stats_filtered_1_prev_l %>% filter(Cluster_stats == "Clusters")
+f_clusters_tps <- approxfun(clusters_tps$mean_prop, clusters_tps$value)
+
+p <- 1e-5
+
+p_spar <- ggplot(spar, aes(mean_prop, value)) +
+  geom_point() +
+  geom_line() +
+  geom_segment(aes(x = p, y = 0, xend = p, yend = f_spar(p)), lty = "dotted") +
+  geom_segment(aes(x = 0, y = f_spar(p), xend = p, yend = f_spar(p)), lty = "dotted") +
+  scale_x_log10(breaks = meanprops) +
+  scale_y_continuous(labels = scales::percent) +
+  geom_point(aes(p, f_spar(p)), size = 2, shape = 21, fill = "white") +
+  xlab("Mean proportion threshold") +
+  ylab("Sparsity") +
+  theme_light() +
+  theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"),
+        plot.title = element_text(size = 8, face = "bold", vjust = -1)) +
+  ggtitle(paste("Sparsity:", scales::percent(round(f_spar(p),3))))
+
+p_counts <- ggplot(counts, aes(mean_prop, value)) +
+  geom_point() +
+  geom_line() +
+  geom_segment(aes(x = p, y = 0, xend = p, yend = f_counts(p)), lty = "dotted") +
+  geom_segment(aes(x = 0, y = f_counts(p), xend = p, yend = f_counts(p)), lty = "dotted") +
+  scale_x_log10(breaks = meanprops) +
+ scale_y_continuous(labels=function(x){paste0(x/1e6,"M")}) +
+  geom_point(aes(p, f_counts(p)), size = 2, shape = 21, fill = "white") +
+  xlab("Mean proportion threshold") +
+  ylab("Counts") +
+  theme_light() +
+  theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"),
+        plot.title = element_text(size = 8, face = "bold", vjust = -1)) +
+  ggtitle(paste("Counts:", scales::comma(round(f_counts(p),3))))
+
+p_clusters <- ggplot(clusters, aes(mean_prop, value)) +
+  geom_point() +
+  geom_line() +
+  geom_segment(aes(x = p, y = 0, xend = p, yend = f_clusters(p)), lty = "dotted") +
+  geom_segment(aes(x = 0, y = f_clusters(p), xend = p, yend = f_clusters(p)), lty = "dotted") +
+  scale_x_log10(breaks = meanprops) +
+  scale_y_log10(labels=scales::comma) +
+  geom_point(aes(p, f_clusters(p)), size = 2, shape = 21, fill = "white") +
+  xlab("Mean proportion threshold") +
+  ylab("Components") +
+  theme_light() +
+  theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"),
+        plot.title = element_text(size = 8, face = "bold", vjust = -1)) +
+  ggtitle(paste("Components:", scales::comma(round(f_clusters(p),3))))
+
+# # TARA prokaryotic, surface samples plots
+p_spar_surface <- ggplot(spar_tps, aes(mean_prop, value)) +
+  geom_point() +
+  geom_line() +
+  geom_segment(aes(x = p, y = 0, xend = p, yend = f_spar_tps(p)), lty = "dotted") +
+  geom_segment(aes(x = 0, y = f_spar_tps(p), xend = p, yend = f_spar_tps(p)), lty = "dotted") +
+  scale_x_log10(breaks = meanprops) +
+  scale_y_continuous(labels = scales::percent) +
+  geom_point(aes(p, f_spar_tps(p)), size = 2, shape = 21, fill = "white") +
+  xlab("Mean proportion threshold") +
+  ylab("Sparsity") +
+  theme_light() +
+  theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"),
+        plot.title = element_text(size = 8, face = "bold", vjust = -1)) +
+  ggtitle(paste("Sparsity:", scales::percent(round(f_spar_tps(p),3))))
+
+p_counts_surface <- ggplot(counts_tps, aes(mean_prop, value)) +
+  geom_point() +
+  geom_line() +
+  geom_segment(aes(x = p, y = 0, xend = p, yend = f_counts_tps(p)), lty = "dotted") +
+  geom_segment(aes(x = 0, y = f_counts_tps(p), xend = p, yend = f_counts_tps(p)), lty = "dotted") +
+  scale_x_log10(breaks = meanprops) +
+ scale_y_continuous(labels=function(x){paste0(x/1e6,"M")}) +
+  geom_point(aes(p, f_counts_tps(p)), size = 2, shape = 21, fill = "white") +
+  xlab("Mean proportion threshold") +
+  ylab("Counts") +
+  theme_light() +
+  theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"),
+        plot.title = element_text(size = 8, face = "bold", vjust = -1)) +
+  ggtitle(paste("Counts:", scales::comma(round(f_counts_tps(p),3))))
+
+p_clusters_surface <- ggplot(clusters_tps, aes(mean_prop, value)) +
+  geom_point() +
+  geom_line() +
+  geom_segment(aes(x = p, y = 0, xend = p, yend = f_clusters_tps(p)), lty = "dotted") +
+  geom_segment(aes(x = 0, y = f_clusters_tps(p), xend = p, yend = f_clusters_tps(p)), lty = "dotted") +
+  scale_x_log10(breaks = meanprops) +
+  scale_y_log10(labels=scales::comma) +
+  geom_point(aes(p, f_clusters_tps(p)), size = 2, shape = 21, fill = "white") +
+  xlab("Mean proportion threshold") +
+  ylab("Components") +
+  theme_light() +
+  theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"),
+        plot.title = element_text(size = 8, face = "bold", vjust = -1)) +
+  ggtitle(paste("Components:", scales::comma(round(f_clusters_tps(p),3))))
+
+ggarrange(p_spar, p_counts, p_clusters, p_spar_surface, p_counts_surface, p_clusters_surface, labels = "AUTO", nrow = 2, ncol = 3)
+
+#ggarrange(p_spar_surface, p_counts_surface, p_clusters_surface, labels = "AUTO", nrow = 1, ncol = 3)
+
+```
+
+Sparsity and others
+```{r}
+percent_occurrence <- seq(0, 1, 0.2)
+
+# filtering function
+prevalence_filtering <- function(X, Y) { 
+  df <- as_tibble(Y) %>%
+    ungroup() %>%
+    dplyr::select(sample_ID, component, abun) %>%
+    group_by(component) %>%
+    mutate(occurrence = length(unique(sample_ID))) %>%
+    ungroup() %>%
+    mutate(n_samples = length(unique(sample_ID)), 
+           prev = n_samples * X) %>%
+    filter(occurrence >= prev) %>%
+    summarise(prev = X, 
+              n_clstrs = length(unique(component)), 
+              n_samples = length(unique(sample_ID)),
+              no_zero = sum(abun > 0), 
+              sparsity = 1 - (no_zero/(n_clstrs * n_samples)),
+              total_counts = sum(abun))
+  return(df)  
+}
+
+# apply function
+clstrs_tp_stats_filtered_1_prev <- bind_rows(pbmclapply(X = percent_occurrence, FUN = prevalence_filtering, Y = clstrs_tp_stats_f1))
+clstrs_tps_stats_filtered_1_prev <- bind_rows(pbmclapply(X = percent_occurrence, FUN = prevalence_filtering, Y = clstrs_tps_stats_f1))
+
+
+# Tidy data via gather (melt)
+clstrs_tp_stats_filtered_1_prev_l <- clstrs_tp_stats_filtered_1_prev %>%
+  dplyr::select(prev, n_samples, n_clstrs, total_counts, sparsity) %>%
+  rename(Samples = n_samples, Clusters = n_clstrs, Counts = total_counts, Sparsity = sparsity) %>%
+  gather(Cluster_stats, value, -prev)
+
+clstrs_tps_stats_filtered_1_prev_l <- clstrs_tps_stats_filtered_1_prev %>%
+  dplyr::select(prev, n_samples, n_clstrs, total_counts, sparsity) %>%
+  rename(Samples = n_samples, Clusters = n_clstrs, Counts = total_counts, Sparsity = sparsity) %>%
+  gather(Cluster_stats, value, -prev)
+
+library(tidyverse)
+library(cowplot)
+
+
+# From http://www.moeding.net/archives/32-Metric-prefixes-for-ggplot2-scales.html
+FormatSI <- function(x, ...) {
+  # Format a vector of numeric values according to the
+  # International System of Units.
+  # http://en.wikipedia.org/wiki/SI_prefix
+  #
+  # Args:
+  #   x  : A vector of numeric values
+  #   ...: Remaining args passed to format()
+  #
+  # Returns:
+  #   A vector of strings using SI prefix notation
+  #
+  # Bugs:
+  #   Does not (yet) work with small (<1) numbers
+  #
+  scale.frac <- 1000
+  scale.unit <- c("k", "M", "G", "T", "P", "E", "Z", "Y")
+  
+  # Start with empty prefixes
+  p <- rep(" ", length(x))
+  
+  # Divide by scale.frac and store scale.unit if value is
+  # large enough. Repeat for all units.
+  for(i in 1:length(scale.unit)) {
+    p[x >= scale.frac] <- scale.unit[i]
+    x[x >= scale.frac] <- x[x >= scale.frac] / scale.frac
+  }
+  
+  return(paste(format(round(x,1), trim=TRUE, scientific=FALSE, ...), p, sep = ""))
+}
+
+
+spar <- clstrs_tp_stats_filtered_1_prev_l %>% filter(Cluster_stats == "Sparsity")
+f_spar <- approxfun(spar$prev, spar$value)
+
+samp <- clstrs_tp_stats_filtered_1_prev_l %>% filter(Cluster_stats == "Samples")
+f_samp <- approxfun(samp$prev, samp$value)
+
+counts <- clstrs_tp_stats_filtered_1_prev_l %>% filter(Cluster_stats == "Counts")
+f_counts <- approxfun(counts$prev, counts$value)
+
+clusters <- clstrs_tp_stats_filtered_1_prev_l %>% filter(Cluster_stats == "Clusters")
+f_clusters <- approxfun(clusters$prev, clusters$value)
+
+
+p <- 0.05
+
+p_spar <- ggplot(spar, aes(prev, value)) +
+  geom_line() +
+  geom_segment(aes(x = p, y = 0, xend = p, yend = f_spar(p)), lty = "dotted") +
+  geom_segment(aes(x = 0, y = f_spar(p), xend = p, yend = f_spar(p)), lty = "dotted") +
+  scale_x_continuous(expand = c(0,0), labels = scales::percent) +
+  scale_y_continuous(expand = c(0,0), labels = scales::percent) +
+  geom_point(aes(p, f_spar(p)), size = 2, shape = 21, fill = "white") +
+  xlab("Prevalence") +
+  ylab("Sparsity") +
+  theme_light() +
+  theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"),
+        plot.title = element_text(size = 8, face = "bold", vjust = -1)) +
+  ggtitle(paste("Sparsity:", scales::percent(round(f_spar(p),3))))
+
+p_samp <- ggplot(samp, aes(prev, value)) +
+  geom_line() +
+  geom_segment(aes(x = p, y = 0, xend = p, yend = f_samp(p)), lty = "dotted") +
+  geom_segment(aes(x = 0, y = f_samp(p), xend = p, yend = f_samp(p)), lty = "dotted") +
+  scale_x_continuous(expand = c(0,0), labels = scales::percent) +
+  scale_y_continuous(expand = c(0,0), labels = scales::comma, limits = c(0,150)) +
+  geom_point(aes(p, f_samp(p)), size = 2, shape = 21, fill = "white") +
+  xlab("Prevalence") +
+  ylab("Samples") +
+  theme_light() +
+  theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"),
+        plot.title = element_text(size = 8, face = "bold", vjust = -1)) +
+  ggtitle(paste("Samples:", scales::comma(round(f_samp(p),3))))
+
+p_counts <- ggplot(counts, aes(prev, value)) +
+  geom_line() +
+  geom_segment(aes(x = p, y = 0, xend = p, yend = f_counts(p)), lty = "dotted") +
+  geom_segment(aes(x = 0, y = f_counts(p), xend = p, yend = f_counts(p)), lty = "dotted") +
+  scale_x_continuous(expand = c(0,0), labels = scales::percent) +
+  scale_y_continuous(expand = c(0,0), labels=FormatSI) +
+  geom_point(aes(p, f_counts(p)), size = 2, shape = 21, fill = "white") +
+  xlab("Prevalence") +
+  ylab("Counts") +
+  theme_light() +
+  theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"),
+        plot.title = element_text(size = 8, face = "bold", vjust = -1)) +
+  ggtitle(paste("Counts:", scales::comma(round(f_counts(p),3))))
+
+p_clusters <- ggplot(clusters, aes(prev, value)) +
+  geom_line() +
+  geom_segment(aes(x = p, y = 0, xend = p, yend = f_clusters(p)), lty = "dotted") +
+  geom_segment(aes(x = 0, y = f_clusters(p), xend = p, yend = f_clusters(p)), lty = "dotted") +
+  scale_x_continuous(expand = c(0,0), labels = scales::percent) +
+  scale_y_continuous(expand = c(0,0), labels=scales::comma, breaks = seq(0, max(clusters$value), by = 5000)) +
+  geom_point(aes(p, f_clusters(p)), size = 2, shape = 21, fill = "white") +
+  xlab("Prevalence") +
+  ylab("Clusters") +
+  theme_light() +
+  theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"),
+        plot.title = element_text(size = 8, face = "bold", vjust = -1)) +
+  ggtitle(paste("Clusters:", scales::comma(round(f_clusters(p),3))))
+
+p_all <- plot_grid(p_spar, p_counts, p_samp, p_clusters, labels=c('A', 'B', 'C', 'D'))
+title <- ggdraw() + draw_label(paste("Filtering with a prevalence value of", scales::percent(p)), fontface='bold')
+plot_grid(title, p_all, ncol=1, rel_heights=c(0.1, 1))
+```
+
+
+# 2. PCA
+Load plotting object
+```{r}
+#save(known_physeq, k_physeq_ord, unk_physeq, unk_physeq_ord, all_physeq, all_physeq_ord, unk, knowns, physeq, comp_list,  file =  "/Users/mattschechter/Desktop/MarMic/msc_thesis/data/plot_data/ordination.RData")
+load(file =  "/Users/mattschechter/Desktop/MarMic/msc_thesis/data/plot_data/ordination.RData")
+```
+
+PCA color Depth category
+```{r}
+library(ggConvexHull)
+# Plot Ordination (categorical variables)
+
+plot_ordination1 <- function(X,Y,Z, B){
+  physeq_df <- as(sample_data(X), "data.frame")
+  physeq_df$depth_category <- factor(physeq_df$depth_category, levels = rev(c("SRF", "DCM", "MES")))
+  sample_data(X) <- physeq_df
+  
+  
+  
+  eigvec <- Y$CA$eig %>% map_df(~ data_frame(eig = .x), .id = "axis") %>%
+    mutate(per_var = 100 * (eig/sum(eig)))
+  
+  physeq_ord_pca <- bind_cols(Y$CA$u[,1] %>% map_df(~ data_frame(PC1 = .x), .id = "sample_ID"),
+                              Y$CA$u[,2] %>% map_df(~ data_frame(PC2 = .x), .id = "sample_ID") %>% dplyr::select(-sample_ID))  %>%
+    left_join(physeq_df %>% dplyr::select(sample_ID, depth_category))
+  
+  
+  sp <- ggscatter(physeq_ord_pca, x = "PC1", y = "PC2",
+                  color = "black",
+                  fill = "depth_category",
+                  shape = 21,
+                  alpha = 0.8,
+                  ellipse = TRUE, 
+                  mean.point = FALSE,
+                  star.plot = FALSE,
+                  ellipse.type = "convex") +
+    theme_light() +
+    theme(axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.title.x = element_blank()) +
+    ylab(paste0("PC2 [", round(eigvec$per_var[2], 1), "%]")) +
+    scale_fill_manual(values = c("#2A67A0", "#19A450", "#AA282F")) +
+    scale_color_manual(values = c("#2A67A0", "#19A450", "#AA282F")) +
+    ggtitle(B)
+  
+  
+  my_comparisons <- list( c("SRF", "DCM"), c("DCM", "MES"), c("SRF", "MES"))
+  # Marginal boxplot of x (top panel) and y (right panel)
+  xplot <- ggboxplot(physeq_ord_pca, x = "depth_category", y = "PC1", 
+                     color = "black", fill = "depth_category",
+                     alpha = 0.8)+
+    rotate() +
+    theme_light() +
+    theme(#axis.text.y = element_blank(),
+      #axis.ticks.y = element_blank(),
+      axis.title.y = element_blank()) +
+    # stat_compare_means(comparisons = my_comparisons, label = "p.signif", hide.ns = TRUE) +
+    ylab(paste0("PC1 [", round(eigvec$per_var[1], 1), "%]")) +
+    scale_fill_manual(values = c("#2A67A0", "#19A450", "#AA282F")) +
+    scale_color_manual(values = c("#2A67A0", "#19A450", "#AA282F"))
+  
+  
+  scree_unk <- data.frame(x = Y$CA$eig) %>% rownames_to_column(var = "PC") %>% dplyr::mutate(prop=x/sum(x)) %>% dplyr::select(-x) %>% top_n(n = 10)
+  
+  p_scree <- ggplot(data = scree_unk %>% mutate(PC = fct_reorder(.desc = TRUE, PC, prop)), aes(x = PC, y = prop*100)) +
+    geom_bar(stat = "identity", fill = "indianred", color = "black") +
+    theme_light() +
+    theme() +
+    xlab("Principal components") +
+    ylab("Percent explained") +
+    ggtitle(B)
+  
+  
+  
+  
+  sp <- sp + rremove("legend")
+  xplot <- xplot + rremove("legend")
+  ggarrange(sp,xplot, p_scree, heights = c(2,1,2), ncol = 1, nrow = 3, align = "hv", labels = Z)
+}
+# Unks
+ggarrange(plot_ordination1(known_physeq, k_physeq_ord, c("A","","D"), "Known components"),
+          plot_ordination1(unk_physeq, unk_physeq_ord, c("B","","E"), "Unknown components"),
+          plot_ordination1(all_physeq, all_physeq_ord, c("C","","F"), "All components"),
+          nrow = 1, ncol = 3)
+
+
+ev<-k_physeq_ord$CA$eig
+ev[ev>mean(ev)]
+
+barplot(ev, main="Eigenvalues", col="bisque")
+abline(h=mean(ev), col="red", lty=3, lwd=3)
+
+```
+
+PCA color temperautre
+```{r}
+plot_ordination2 <- function(X,Y,B){
+  physeq_df <- as(sample_data(X), "data.frame")
+  physeq_df$depth_category <- factor(physeq_df$depth_category, levels = rev(c("SRF", "DCM", "MES")))
+  sample_data(X) <- physeq_df
+  
+  
+  
+  eigvec <- Y$CA$eig %>% map_df(~ data_frame(eig = .x), .id = "axis") %>%
+    mutate(per_var = 100 * (eig/sum(eig)))
+  
+  physeq_ord_pca <- bind_cols(Y$CA$u[,1] %>% map_df(~ data_frame(PC1 = .x), .id = "sample_ID"),
+                              Y$CA$u[,2] %>% map_df(~ data_frame(PC2 = .x), .id = "sample_ID") %>% dplyr::select(-sample_ID))  %>%
+    left_join(physeq_df %>% dplyr::select(sample_ID, temperature))
+  
+  
+  sp <- ggscatter(physeq_ord_pca, x = "PC1", y = "PC2",
+                  color = "black",
+                  fill = "temperature",
+                  shape = 21,
+                  alpha = 0.8,
+                  ellipse = FALSE, 
+                  mean.point = FALSE,
+                  star.plot = FALSE,
+                  ellipse.type = "convex") +
+    theme_light() +
+    xlab(paste0("PC1 [", round(eigvec$per_var[1], 1), "%]")) +
+    ylab(paste0("PC2 [", round(eigvec$per_var[2], 1), "%]")) +
+    scale_fill_viridis(option = "inferno", discrete = FALSE) +
+    ggtitle(B)
+}
+
+ggarrange(plot_ordination2(known_physeq, k_physeq_ord, "Known components"),
+          plot_ordination2(unk_physeq, unk_physeq_ord, "Unknown components"),
+          plot_ordination2(all_physeq, all_physeq_ord, "All components"),
+          nrow = 1, ncol = 3, labels = "AUTO", common.legend = TRUE)
+```
+
+
+PCA residuals
+```{r}
+# How to the residuals after transforming or scaling the compostional data?
+# Plot residuals
+r_k <- k_physeq_ord %>%
+  residuals() %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "label") %>% 
+  as_tibble() %>% 
+  gather(clstr_name, residuals, -label) %>%
+  dplyr::select(residuals) %>%
+  as_tibble() %>%
+  gghistogram(x = "residuals", fill = "lightgray", add = "mean", rug = FALSE, title = "Known components", bins = nclass.Sturges(.$residuals)) +
+  theme_light() +
+  xlab("Residuals") +
+  ylab("Frequency") +
+  scale_y_continuous(labels = scales::comma)
+
+r_unk <- unk_physeq_ord %>%
+  residuals() %>%
+  as_data_frame() %>%
+  rownames_to_column(var = "label") %>% 
+  as_tibble() %>% 
+  gather(clstr_name, residuals, -label) %>%
+  dplyr::select(residuals) %>%
+  as_tibble() %>%
+  gghistogram(x = "residuals", fill = "lightgray", add = "mean", rug = FALSE, title = "Unknown components", bins = nclass.Sturges(.$residuals)) +
+  theme_light() +
+  xlab("Residuals") +
+  ylab("Frequency") +
+  scale_y_continuous(labels = scales::comma)
+  
+r_all <- all_physeq_ord %>%
+  residuals() %>%
+  as_data_frame() %>%
+  rownames_to_column(var = "label") %>% 
+  as_tibble() %>% 
+  gather(clstr_name, residuals, -label) %>%
+  dplyr::select(residuals) %>%
+  as_tibble() %>%
+  gghistogram(x = "residuals", fill = "lightgray", add = "mean", rug = FALSE, title = "All components", bins = nclass.Sturges(.$residuals)) +
+  theme_light() +
+  xlab("Residuals") +
+  ylab("Frequency") +
+  scale_y_continuous(labels = scales::comma)
+
+#r_eu + r_gu + r_k + r_unk + r_all + plot_layout(ncol = 3, nrow = 2)
+
+p_res <- ggarrange(r_all, r_unk, r_k, nrow = 1, ncol = 3, labels = "AUTO")
+
+p_res <- annotate_figure(p = p_res, 
+                         top = text_grob("TARA prokaryotic surface (CLR + PCA) \n residuals", color = "red", face = "bold", size = 20, hjust = 0.5))
+# Print
+p_res
+```
+
+NMDS
+```{r}
+# Make a cssTrans function
+cssTrans <- function(f.physeq.p = f.physeq.p, norm = norm, log = log){
+  require(metagenomeSeq)
+  if (taxa_are_rows(f.physeq.p)) {
+    f.physeq.p <- (f.physeq.p)
+  }else{
+    f.physeq.p <- t(f.physeq.p)
+  }
+  
+  OTU <- as((otu_table(f.physeq.p, taxa_are_rows = TRUE)), "matrix")
+  MGS <- newMRexperiment(
+    counts = (OTU)
+  )
+  MGS <- cumNorm(MGS, p = cumNormStat(MGS))
+  f.norm.p <- f.physeq.p
+  otu_table(f.norm.p) <- otu_table((as.matrix(MRcounts(
+    MGS,
+    norm = norm,
+    log = log,
+    sl = median(unlist(normFactors(MGS)))
+  ))), taxa_are_rows = T)
+  return(f.norm.p)
+}
+
+# CSS transform the data
+clstrs_physeq_css <- cssTrans(physeq, norm = TRUE, log = TRUE)
+
+# Remove clusters with mean proportion < 1e-5
+pop_taxa <- function(physeq, badTaxa){
+  allTaxa = taxa_names(physeq)
+  allTaxa <- allTaxa[(allTaxa %in% badTaxa)]
+  return(prune_taxa(allTaxa, physeq))
+}
+
+clstrs_physeq_css_filtered <- pop_taxa(clstrs_physeq_css, comp_list)
+
+# Separate into component categories
+pop_taxa_1 <- function(physeq, badTaxa){
+  allTaxa = taxa_names(physeq)
+  allTaxa <- allTaxa[(allTaxa %in% badTaxa)]
+  return(prune_taxa(allTaxa, physeq))
+}
+
+unk_physeq_css <- pop_taxa_1(clstrs_physeq_css_filtered, unk %>% unique)
+known_physeq_css <- pop_taxa_1(clstrs_physeq_css_filtered, knowns %>% unique)
+all_physeq_css <- clstrs_physeq_css_filtered
+
+unk_physeq_nmds <- ordinate(unk_physeq_css, method = "NMDS", distance = "bray")
+k_physeq_nmds <- ordinate(known_physeq_css, method = "NMDS", distance = "bray")
+all_physeq_nmds <- ordinate(all_physeq_css, method = "NMDS", distance = "bray")
+
+
+nmds_plot <- function(X ,Y, Z, B){
+  physeq_df <- as(sample_data(X), "data.frame")
+  physeq_df$depth_category <- factor(physeq_df$depth_category, levels = rev(c("SRF", "DCM", "MES")))
+  sample_data(X) <- physeq_df
+  
+  physeq_nmds <- scores(Y) %>% as.data.frame() %>% rownames_to_column(var = "sample_ID") %>%
+    left_join(physeq_df %>% dplyr::select(sample_ID, temperature, depth_category))
+  
+  tib <- tibble(Y$diss, Y$dist, Y$dhat)
+  colnames(tib) <- c("diss", "dist", "dhat")
+  stress <- Y$stress
+  coord_x_n <- min(physeq_nmds$NMDS1)
+  coord_y_n <- max(physeq_nmds$NMDS2)
+  coord_x <- min(tib$diss)
+  coord_y <- max(tib$dist)
+  nonmetric_r2 <- round(1 - stress * stress, digits = 3)
+  linear_r2 <- round(summary(lm(Y$dist~Y$dhat))$adj.r.squared, 3)
+  
+  
+  sp <- ggscatter(physeq_nmds, x = "NMDS1", y = "NMDS2",
+                  color = "black",
+                  fill = "depth_category",
+                  shape = 21,
+                  alpha = 0.8,
+                  ellipse = FALSE, 
+                  mean.point = FALSE,
+                  star.plot = FALSE,
+                  ellipse.type = "convex")  +
+    theme_light() +
+    scale_fill_manual(values = c("#2A67A0", "#19A450", "#AA282F")) +
+    ggtitle(B) +
+    annotate(
+      geom = "text",
+      x = coord_x_n,
+      y = c(coord_y_n),
+      hjust = 0,
+      #vjust = 1,
+      label = paste0("Stress=", round(stress, 2)))
+  
+  sp1 <- ggscatter(physeq_nmds, x = "NMDS1", y = "NMDS2",
+                  color = "black",
+                  fill = "temperature",
+                  shape = 21,
+                  alpha = 0.8,
+                  ellipse = FALSE, 
+                  mean.point = FALSE,
+                  star.plot = FALSE,
+                  ellipse.type = "convex")  +
+    theme_light() +
+    scale_fill_viridis(option = "inferno", discrete = FALSE) +
+    ggtitle(B) +
+    annotate(
+      geom = "text",
+      x = coord_x_n,
+      y = c(coord_y_n),
+      hjust = 0,
+      #vjust = 1,
+      label = paste0("Stress=", round(stress, 2)))
+    
+  
+  
+  ## How do I get the newline character to be honored?
+  nonmetric_label <- c(paste0("Non-metric~fit~italic(R)^2 ==", nonmetric_r2),
+                      paste0("Linear~fit~italic(R)^2 ==", linear_r2)) 
+  shep <- ggplot(tib, aes(x = diss, y = dist)) +
+    geom_point(fill = "blue", size = 0.5, color = "black", shape = 21) +
+    geom_step(aes(x = diss, y = dhat), color = "red", direction = "vh") +
+    annotate(
+      geom = "text",
+      x = coord_x,
+      y = c(coord_y, 0.95*coord_y),
+      hjust = 0,
+      #vjust = 1,
+      label = nonmetric_label, parse = TRUE) +
+    labs(x = "Observed Dissimilarity",
+         y = "Ordination Distance") +
+    theme_light() +
+    ggtitle(B)
+  ggarrange(sp + rremove("legend"), sp1 + rremove("legend"), shep, ncol = 1, nrow = 3, align = "hv", labels = Z)
+}
+
+
+ggarrange(nmds_plot(known_physeq_css, k_physeq_nmds, c("A", "D", "G"), "Known components"),
+          nmds_plot(unk_physeq_css, unk_physeq_nmds, c("B", "E", "H"), "Unknown components"),
+          nmds_plot(all_physeq_css, all_physeq_nmds, c("C", "F", "K"), "All components"),
+          nrow = 1, ncol = 3, common.legend = TRUE)
+```
+
+
+Permanova/Beta dispersion temperature
+```{r}
+metadata <- as(sample_data(unk_physeq), "data.frame")
+
+
+# PERMANOVA
+# temperature
+# Unk
+adonis(distance(unk_physeq, method="euclidean") ~ temperature,
+       data = metadata)
+# Known
+adonis(distance(known_physeq, method="euclidean") ~ temperature,
+       data = metadata)
+# All
+adonis(distance(all_physeq, method="euclidean") ~ temperature,
+       data = metadata)
+
+# Homogeneity of gorups and beta diversity
+unk_beta <- betadisper(distance(unk_physeq, method="euclidean"), metadata$temperature)
+permutest(unk_beta)
+
+known_beta <- betadisper(distance(known_physeq, method="euclidean"), metadata$temperature)
+permutest(known_beta)
+
+all_beta <- betadisper(distance(all_physeq, method="euclidean"), metadata$temperature)
+permutest(all_beta)
+```
+
+Beta dispersion depth category
+```{r}
+# PERMANOVA
+# temperature
+# Unk
+adonis(distance(unk_physeq, method="euclidean") ~ depth_category,
+       data = metadata)
+# Known
+adonis(distance(known_physeq, method="euclidean") ~ depth_category,
+       data = metadata)
+# All
+adonis(distance(all_physeq, method="euclidean") ~ depth_category,
+       data = metadata)
+
+# Homogeneity of gorups and beta diversity
+unk_beta <- betadisper(distance(unk_physeq, method="euclidean"), metadata$depth_category)
+permutest(unk_beta)
+
+known_beta <- betadisper(distance(known_physeq, method="euclidean"), metadata$depth_category)
+permutest(known_beta)
+
+all_beta <- betadisper(distance(all_physeq, method="euclidean"), metadata$depth_category)
+permutest(all_beta)
+```
+
+# 3. Niche breadth
+load plotting object
+```{r}
+#save(results, file = "/Users/mattschechter/Desktop/MarMic/msc_thesis/data/plot_data/niche_breadth.RData")
+load(file = "/Users/mattschechter/Desktop/MarMic/msc_thesis/data/plot_data/niche_breadth.RData")
+```
+
+panel of each component category
+```{r}
+# Separate into classes
+results_k <- results %>%
+  filter(grepl("k", component))
+results_eu <- results %>%
+  filter(grepl("eu", component))
+results_gu <- results %>%
+  filter(grepl("gu", component))
+
+# plot all
+all_plot <- ggplot(results %>% dplyr::select(mean_proportion, observed, sign) %>% unique, aes(mean_proportion, observed, fill = sign)) +
+  geom_point(size=1.7, alpha = 0.9, shape=21, color = "#3A3A3A") + theme_light() +
+  scale_x_log10(position = "right") + 
+  xlab("Mean proportion (log10)") + 
+  ylab("Levin's niche breadth (B)") + 
+  #ggtitle("Environmental unknowns PC distribution") + 
+  guides(fill = guide_legend(override.aes = list(size=2), nrow = 1)) +
+  theme(plot.title = element_text(size = 14, face = "bold"),
+        legend.position="top",
+        legend.title=element_blank(), 
+        legend.key=element_blank(),
+        legend.background = element_rect(fill=alpha('white', 0.4)),
+        axis.title=element_text(size=12),
+        legend.text=element_text(size=12),
+        legend.text.align=0) +
+  scale_fill_manual(values = c("#588157", "#9A9A9A", "#3891A6")) +
+  ggtitle("All components")
+
+eu_all_plot <- ggplot(results_eu %>% dplyr::select(mean_proportion, observed, sign) %>% unique, aes(mean_proportion, observed, fill = sign)) +
+  geom_point(size=1.7, alpha = 0.9, shape=21, color = "#3A3A3A") + theme_light() +
+  scale_x_log10() + 
+  xlab("Mean proportion (log10)") + 
+  ylab("Levin's niche breadth (B)") + 
+  #ggtitle("Environmental unknowns PC distribution") + 
+  guides(fill = guide_legend(override.aes = list(size=2), nrow = 1)) +
+  theme(plot.title = element_text(size = 14, face = "bold"),
+        legend.position="top",
+        legend.title=element_blank(), 
+        legend.key=element_blank(),
+        legend.background = element_rect(fill=alpha('white', 0.4)),
+        axis.title=element_text(size=12),
+        legend.text=element_text(size=12),
+        legend.text.align=0) +
+  scale_fill_manual(values = c("#588157", "#9A9A9A", "#3891A6")) +
+  ggtitle("Env. unk. components")
+
+gu_all_plot <- ggplot(results_gu %>% dplyr::select(mean_proportion, observed, sign) %>% unique, aes(mean_proportion, observed, fill = sign)) +
+  geom_point(size=1.7, alpha = 0.9, shape=21, color = "#3A3A3A") + theme_light() +
+  scale_x_log10() + 
+  xlab("Mean proportion (log10)") + 
+  ylab("Levin's niche breadth (B)") + 
+  #ggtitle("Environmental unknowns PC distribution") + 
+  guides(fill = guide_legend(override.aes = list(size=2), nrow = 1)) +
+  theme(plot.title = element_text(size = 14, face = "bold"),
+        legend.position="top",
+        legend.title=element_blank(), 
+        legend.key=element_blank(),
+        legend.background = element_rect(fill=alpha('white', 0.4)),
+        axis.title=element_text(size=12),
+        legend.text=element_text(size=12),
+        legend.text.align=0) +
+  scale_fill_manual(values = c("#588157", "#9A9A9A", "#3891A6")) +
+  ggtitle("Genomic unk. components")
+
+k_all_plot <- ggplot(results_k %>% dplyr::select(mean_proportion, observed, sign) %>% unique, aes(mean_proportion, observed, fill = sign)) +
+  geom_point(size=1.7, alpha = 0.9, shape=21, color = "#3A3A3A") + theme_light() +
+  scale_x_log10() + 
+  xlab("Mean proportion (log10)") + 
+  ylab("Levin's niche breadth (B)") + 
+  #ggtitle("Environmental unknowns PC distribution") + 
+  guides(fill = guide_legend(override.aes = list(size=2), nrow = 1)) +
+  theme(plot.title = element_text(size = 14, face = "bold"),
+        legend.position="top",
+        legend.title=element_blank(), 
+        legend.key=element_blank(),
+        legend.background = element_rect(fill=alpha('white', 0.4)),
+        axis.title=element_text(size=12),
+        legend.text=element_text(size=12),
+        legend.text.align=0) +
+  scale_fill_manual(values = c("#588157", "#9A9A9A", "#3891A6"))  +
+  ggtitle("Known components")
+
+# How many narrows and wides are in each category?
+all_stats <- results %>% dplyr::select(component, sign) %>% unique %>% group_by(sign) %>% count() %>% mutate(category = "all")
+k_stats <- results_k %>% dplyr::select(component, sign) %>% unique %>% group_by(sign) %>% count() %>% mutate(category = "k")
+gu_stats <- results_gu %>% dplyr::select(component, sign) %>% unique %>% group_by(sign) %>% count() %>% mutate(category = "gu")
+eu_stats <- results_eu %>% dplyr::select(component, sign) %>% unique %>% group_by(sign) %>% count() %>% mutate(category = "eu")
+
+B_stats <- bind_rows(all_stats, k_stats, gu_stats, eu_stats)
+B_stats$category <- factor(B_stats$category, levels = c("all", "k", "gu", "eu"))
+
+results %>% dplyr::select(component, sign) %>% unique %>% .$sign %>% table() %>% prop.table()
+results_k %>% dplyr::select(component, sign) %>% unique %>% .$sign %>% table() %>% prop.table()
+results_gu %>% dplyr::select(component, sign) %>% unique %>% .$sign %>% table() %>% prop.table()
+results_eu %>% dplyr::select(component, sign) %>% unique %>% .$sign %>% table() %>% prop.table()
+
+
+B_stats_all <- B_stats %>% filter(category == "all") %>%
+  ggplot(aes(x = category, y = n, fill = sign)) +
+  geom_bar(position = "fill",stat = "identity") +
+  scale_y_continuous(labels = percent_format(), position = "right") +
+  scale_fill_manual(values = c("#588157", "#9A9A9A", "#3891A6")) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        legend.position = "none") +
+  xlab("") +
+  ylab("") 
+
+B_stats_k <- B_stats %>% filter(category == "k") %>%
+  ggplot(aes(x = category, y = n, fill = sign)) +
+  geom_bar(position = "fill",stat = "identity") +
+  scale_y_continuous(labels = percent_format(), position = "right") +
+  scale_fill_manual(values = c("#588157", "#9A9A9A", "#3891A6")) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        legend.position = "none") +
+  xlab("") +
+  ylab("") 
+
+B_stats_gu <- B_stats %>% filter(category == "gu") %>%
+  ggplot(aes(x = category, y = n, fill = sign)) +
+  geom_bar(position = "fill",stat = "identity") +
+  scale_y_continuous(labels = percent_format(), position = "right") +
+  scale_fill_manual(values = c("#588157", "#9A9A9A", "#3891A6")) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        legend.position = "none") +
+  xlab("") +
+  ylab("") 
+
+B_stats_eu <- B_stats %>% filter(category == "eu") %>%
+  ggplot(aes(x = category, y = n, fill = sign)) +
+  geom_bar(position = "fill",stat = "identity") +
+  scale_y_continuous(labels = percent_format(), position = "right") +
+  scale_fill_manual(values = c("#588157", "#9A9A9A", "#3891A6")) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        legend.position = "none") +
+  xlab("") +
+  ylab("")
+
+ggarrange(all_plot,k_all_plot,gu_all_plot,eu_all_plot, nrow = 1, ncol = 4, labels = "AUTO", common.legend = TRUE)
+ggarrange(B_stats_all,B_stats_k,B_stats_gu,B_stats_eu, nrow = 1, ncol = 4)
+
+
+# Plot proportions of Niche Breadth classification for each category
+library(scales)
+p0 <- ggplot(B_stats, aes(x = category, y = n, fill = sign)) + 
+  geom_bar(position = "fill",stat = "identity") +
+  scale_y_continuous(labels = percent_format()) +
+  scale_fill_manual(values = c("#588157", "#9A9A9A", "#3891A6")) +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        legend.position = "bottom") +
+  ggtitle("Niche breadth classification") +
+  xlab("Component category") +
+  ylab("Percent")
+
+p0
+```
+
+4. Distance-decay
+load plotting object
+```{r}
+#save(all_dist, all_dist_comb, atlantic_comb, pacific_comb, indian_comb, atlantic, pacific, indian, all_meren_coor, file = "/Users/mattschechter/Desktop/MarMic/msc_thesis/data/plot_data/disdecay.RData")
+load(file = "/Users/mattschechter/Desktop/MarMic/msc_thesis/data/plot_data/disdecay.RData")
+
+```
+
+Box plot of all beta diversity
+```{r}
+scale_fill_manual(values = rev(c("#2A363B", "#4A636A", "#E6A54C", "#CE442B")), 
+                  labels=c("Environmental unknowns", "Genomic unknowns", "Knowns with Pfam", "Knowns without Pfam")) 
+
+
+
+all_dist_comb
+
+all_comb <- bind_rows(atlantic_comb %>% mutate(region = "Atlantic set"),
+            pacific_comb %>% mutate(region = "Pacific set "),
+            indian_comb %>% mutate(region = "Indian set"))
+
+
+
+p1a <- ggplot(data = all_comb %>% filter(class == "All"), 
+                 aes(region, value_dis, fill = region)) +
+  geom_boxplot(alpha = 0.5) +
+  geom_jitter(shape = 21, color = "black") +
+  ylim(0, 0.4) +
+  labs(title = "") +
+  xlab(label = "") +
+  ylab(label = "Bray-Curtis dissimilarity")  +
+  theme_light() +
+  theme(legend.position = "none") +
+  ggtitle("All components") +
+  scale_fill_manual(values = c("#67B9FC", "#983BC9", "#FDA428"))
+
+
+
+p2a <- ggplot(data = all_comb %>% filter(class == "Known"), 
+              aes(region, value_dis, fill = region)) +
+  geom_boxplot(alpha = 0.5) +
+  geom_jitter(shape = 21, color = "black") +
+  ylim(0, 0.4) +
+  labs(title = "") +
+  xlab(label = "") +
+  ylab(label = "Bray-Curtis dissimilarity")  +
+  theme_light() +
+  theme(legend.position = "none") +
+  ggtitle("Known components") +
+  scale_fill_manual(values = c("#67B9FC", "#983BC9", "#FDA428"))
+
+p3a <- ggplot(data = all_comb %>% filter(class == "Unknown"), 
+              aes(region, value_dis, fill = region)) +
+  geom_boxplot(alpha = 0.5) +
+  geom_jitter(shape = 21, color = "black") +
+  ylim(0, 0.4) +
+  labs(title = "") +
+  xlab(label = "") +
+  ylab(label = "Bray-Curtis dissimilarity")  +
+  theme_light() +
+  theme(legend.position = "none") +
+  ggtitle("Unknown components") +
+  scale_fill_manual(values = c("#67B9FC", "#983BC9", "#FDA428"))
+
+panel_0 <- ggarrange(p1a, p2a, p3a, ncol = 3, nrow = 1, align = "hv", legend = "none", common.legend = TRUE)
+```
+
+2x3 plot of distance-decay 
+```{r}
+
+ymax <- rbind(atlantic_comb, pacific_comb, indian_comb) %>%
+  .$value_dis %>% max 
+p1 <- ggplot(atlantic_comb, aes(x = (value_geo/1000), y = value_dis, fill = class)) +
+  geom_point(alpha = 0.8, shape = 21, color = "black") + 
+  stat_smooth(size = 0.5, aes(color = class)) +
+  theme_light() +
+  theme(legend.position = "top") +
+  scale_x_continuous(labels = scales::comma) +
+  xlab("Geographical distance (km)") +
+  ylab("Bray-Curtis dissimmilarity") +
+  scale_fill_manual(values = c("#103C54", "#EF6C2F", "#2095B8")) +
+  scale_color_manual(values = c("#103C54", "#EF6C2F", "#2095B8")) +
+  ylim(c(0,ymax))
+
+p2 <- ggplot(pacific_comb, aes(x = (value_geo/1000), y = value_dis, fill = class)) +
+  geom_point(alpha = 0.8, shape = 21, color = "black") + 
+  stat_smooth(size = 0.5, aes(color = class)) +
+  theme_light() +
+  theme(legend.position = "top") +
+  scale_x_continuous(labels = scales::comma) +
+  xlab("Geographical distance (km)") +
+  ylab("Bray-Curtis dissimmilarity") +
+  scale_fill_manual(values = c("#103C54", "#EF6C2F", "#2095B8")) +
+  scale_color_manual(values = c("#103C54", "#EF6C2F", "#2095B8")) +
+  ylim(c(0,ymax))
+
+
+p3 <- ggplot(indian_comb, aes(x = (value_geo/1000), y = value_dis, fill = class)) +
+  geom_point(alpha = 0.8, shape = 21, color = "black") + 
+  stat_smooth(size = 0.5, aes(color = class)) +
+  theme_light() +
+  theme(legend.position = "top") +
+  scale_x_continuous(labels = scales::comma) +
+  xlab("Geographical distance (km)") +
+  ylab("Bray-Curtis dissimmilarity") +
+  scale_fill_manual(values = c("#103C54", "#EF6C2F", "#2095B8")) +
+  scale_color_manual(values = c("#103C54", "#EF6C2F", "#2095B8")) +
+  ylim(c(0,ymax))
+
+
+panel_1 <- ggarrange(p1, p2, p3, nrow = 1, ncol = 3, align = "hv", common.legend = TRUE, legend = "top")
+
+atlantic$class <- factor(atlantic$class, levels = c("Known ubiquotous", "Known non-ubiquotous", "Unknown ubiquitous", "Unknown non-ubiquitous",
+                                                    "EU ubiquitous", "EU non-ubiquitous"))
+ymax <- rbind(atlantic, pacific, indian) %>%
+  .$value_dis %>% max 
+p_sp_1 <- ggplot(atlantic, aes(x = (value_geo/1000), y = value_dis, fill = class)) +
+  geom_point(alpha = 0.8, shape = 21, color = "black") + 
+  stat_smooth(size = 0.5, aes(color = class)) +
+  theme_light() +
+  theme(legend.position = "top") +
+  scale_x_continuous(labels = scales::comma) +
+  xlab("Geographical distance (km)") +
+  ylab("Bray-Curtis dissimmilarity") +
+  #scale_fill_manual(values = c("#103C54", "#EF6C2F", "#2095B8")) +
+  #scale_color_manual(values = c("#103C54", "#EF6C2F", "#2095B8")) +
+  ylim(c(0,ymax)) + guides(color = guide_legend(nrow = 1), fill = guide_legend(nrow = 1)) 
+
+pacific$class <- factor(pacific$class, levels = c("Known ubiquotous", "Known non-ubiquotous", "Unknown ubiquitous", "Unknown non-ubiquitous",
+                                                    "EU ubiquitous", "EU non-ubiquitous"))
+p_sp_2 <- ggplot(pacific, aes(x = (value_geo/1000), y = value_dis, fill = class)) +
+  geom_point(alpha = 0.8, shape = 21, color = "black") + 
+  stat_smooth(size = 0.5, aes(color = class)) +
+  theme_light() +
+  theme(legend.position = "none") +
+  scale_x_continuous(labels = scales::comma) +
+  xlab("Geographical distance (km)") +
+  ylab("Bray-Curtis dissimmilarity") +
+  #scale_fill_manual(values = c("#103C54", "#EF6C2F", "#2095B8")) +
+  #scale_color_manual(values = c("#103C54", "#EF6C2F", "#2095B8")) +
+  ylim(c(0,ymax)) 
+
+indian$class <- factor(indian$class, levels = c("Known ubiquotous", "Known non-ubiquotous", "Unknown ubiquitous", "Unknown non-ubiquitous",
+                                                    "EU ubiquitous", "EU non-ubiquitous"))
+p_sp_3 <- ggplot(indian, aes(x = (value_geo/1000), y = value_dis, fill = class)) +
+  geom_point(alpha = 0.8, shape = 21, color = "black") + 
+  stat_smooth(size = 0.5, aes(color = class)) +
+  theme_light() +
+  theme(legend.position = "none") +
+  scale_x_continuous(labels = scales::comma) +
+  xlab("Geographical distance (km)") +
+  ylab("Bray-Curtis dissimmilarity") +
+  #scale_fill_manual(values = c("#103C54", "#EF6C2F", "#2095B8")) +
+  #scale_color_manual(values = c("#103C54", "#EF6C2F", "#2095B8")) +
+  ylim(c(0,ymax)) 
+
+panel_2 <- ggarrange(p_sp_1, p_sp_2, p_sp_3, nrow = 1, ncol = 3, align = "hv", common.legend = TRUE, legend = "top")
+
+```
+
+
+Map of ocean regions
+```{r}
+map.world <- map_data(map="world")
+
+map_s <- ggplot() +
+  geom_map(data=map.world, map=map.world, aes(map_id=region, x=long, y=lat)) +
+  geom_point(data = all_meren_coor, aes(x=longitude, y=latitude, fill = meren_large_region), color = "black", size = 2, shape = 21) +
+  theme_light() +
+  theme(legend.position = "top",
+        axis.text =  element_text()) +
+xlab("") +
+  ylab("") +
+  scale_x_continuous(breaks = c(-100, 0, 100)) +
+  scale_fill_manual(values = c("#67B9FC", "#983BC9", "#FDA428"))
+
+
+all_dd <- ggplot(all_comb, aes(x = (value_geo/1000), y = value_dis, fill = class)) +
+  geom_point(alpha = 0.8, shape = 21, color = "black") + 
+  stat_smooth(size = 0.5, aes(color = class)) +
+  theme_light() +
+  theme(legend.position = "top") +
+  scale_x_continuous(labels = scales::comma) +
+  xlab("Geographical distance (km)") +
+  ylab("Bray-Curtis dissimmilarity") +
+  scale_fill_manual(values = c("#103C54", "#EF6C2F", "#2095B8")) +
+  scale_color_manual(values = c("#103C54", "#EF6C2F", "#2095B8"))
+
+
+map_all <- ggarrange(map_s, all_dd, ncol = 2, align = "hv", widths = c(1.3,1), legend = "top")
+
+
+ggarrange(map_all, panel_0, ncol = 1, nrow = 2)
+ggarrange(panel_1, panel_2, ncol = 1, nrow = 2)
+```
+
