@@ -6,7 +6,7 @@ Group: Marine Genomics and Bioinformatics
 
 Group Leader: Dr. Frank Oliver-Glockner
 
-Supervisor: Dr. Antonio Fernandez_Guerra
+Supervisor: Dr. Antonio Fernandez-Guerra
 
 Master's Thesis Title: Ecological implications and characterization of genes of unknown function in the marine environment
 
