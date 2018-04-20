@@ -12,11 +12,13 @@ mkdir eus_vs_mags
 cd eus_vs_mags
 ```
 
-Download and move [MAGs](https://figshare.com/articles/TARA-NON-REDUNDANT-MAGs/4902923) to working dir
+Download and move [MAGs](https://figshare.com/articles/HBDs-AA-SEQUENCE-DATABASE/4902917) to working dir
 ```{bash}
-mv ~/Desktop/NON_REDUNDANT_MAGs.tar.gz .
+wget https://figshare.com/articles/HBDs-AA-SEQUENCE-DATABASE/4902917
 
-tar -xvzf NON_REDUNDANT_MAGs.tar.gz
+mv ~/Downloads/4902917 .
+
+tar -xvzf 4902917
 ```
 
 ## Making MMSeqs profiles
