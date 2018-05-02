@@ -993,7 +993,7 @@ p0 <- ggplot(B_stats, aes(x = category, y = n, fill = sign)) +
 p0
 ```
 
-4. Distance-decay
+# 4. Distance-decay
 load plotting object
 ```{r}
 #save(all_dist, all_dist_comb, atlantic_comb, pacific_comb, indian_comb, atlantic, pacific, indian, all_meren_coor, file = "/Users/mattschechter/Desktop/MarMic/msc_thesis/data/plot_data/disdecay.RData")
@@ -1153,7 +1153,6 @@ panel_2 <- ggarrange(p_sp_1, p_sp_2, p_sp_3, nrow = 1, ncol = 3, align = "hv", c
 
 ```
 
-
 Map of ocean regions
 ```{r}
 map.world <- map_data(map="world")
@@ -1187,5 +1186,159 @@ map_all <- ggarrange(map_s, all_dd, ncol = 2, align = "hv", widths = c(1.3,1), l
 
 ggarrange(map_all, panel_0, ncol = 1, nrow = 2)
 ggarrange(panel_1, panel_2, ncol = 1, nrow = 2)
+```
+
+# 5. Visualizing EU Ubiquitous contigs
+Read in MAG contig annotation data
+```{r}
+gff <- read_tsv("~/Downloads/MAG_eu_analysis/MAGS_eu_cds.tsv", col_names = FALSE)
+genes <- read_tsv("~/Downloads/MAG_eu_analysis/MAGS_eu_genes.tsv", col_names = FALSE) %>%
+  rename(start = X3, end = X4, contig = X2) %>%
+  mutate(start = start + 1L)
+
+gff <- gff %>%
+  separate(X1, paste0("V", seq(1:5)), remove = FALSE) %>%
+  unite(col = "MAG", paste0("V", seq(1:4))) %>%
+  separate(col = X9, into = c("text", "product"), sep = "product=", remove = FALSE, extra = "drop") %>% 
+  select(-text) %>%
+  mutate(hypo = ifelse(grepl("hypoth", X9), "hypo", "non_hypo")) %>%
+  rename(start = X4, end = X5, contig = X1) %>%
+  mutate(strand = ifelse(X7 == "+", 1L, -1L)) 
+
+gff_genes <- gff %>% select(contig, start, end, product, hypo, MAG, strand) %>%
+  inner_join(genes %>% select(contig, start, end, X1))
+
+spec_ids <- m_vs_u_mag %>% filter(MAG %in% m) %>% select(MAG, gene_callers_id, unk_id) %>% .$gene_callers_id %>% unique
+
+m_vs_u_mag %>% filter(MAG %in% m) %>% select(MAG, gene_callers_id, unk_id) %>% write_tsv(path = "~/Downloads/MAGS_eu", col_names = FALSE)
+
+gff_genes_comb <- gff_genes %>%
+  mutate(spec_ids = ifelse(X1 %in% spec_ids, TRUE, FALSE), product = ifelse(spec_ids == T, "Ubiquitous EU", product)) %>%
+  arrange(contig, start) %>%
+  group_by(MAG, contig) %>%
+  left_join(mag_cdata) 
+```
+
+Select Contigs of interest
+```{r}
+# Completion
+mag_complet <- gff_genes_comb %>% ungroup() %>% select(MAG, `Anvio-Comp`) %>% unique %>% mutate(MAG = fct_reorder(MAG, (`Anvio-Comp`))) %>%
+  ggplot(aes(MAG, `Anvio-Comp`/100)) +
+  geom_bar(stat = "identity") +
+  rotate() +
+  scale_y_continuous(labels = scales::percent, position = "bottom") +
+  theme_light() +
+  ylab("Anvi'o completion")
+
+mag_complet <- gff_genes_comb %>% ungroup() %>% filter(spec_ids == T) %>% 
+  select(MAG, `Anvio-Comp`) %>%
+  mutate(MAG = fct_reorder(MAG, (`Anvio-Comp`))) %>%
+  group_by(MAG,`Anvio-Comp`) %>% 
+  count %>%
+  ggplot(aes(MAG, `Anvio-Comp`/5)) +
+  geom_bar(stat = "identity", fill = "#4A4A4A") +
+  geom_line(aes(y = n), group = 1, color = "#AD303E") +
+  geom_point(aes(y = n), color = "#AD303E", shape = 21, fill = "#AD303E") +
+  rotate() +
+  #scale_y_continuous(labels = scales::percent, position = "bottom") +
+  theme_light() +
+  ylab("Number of ubiquitous EUs") +
+  scale_y_continuous(sec.axis = sec_axis(~.*5, name = "Anvi'o completion", labels = function(x) paste0(x,"%"))) +
+  theme(axis.text.y = element_text(size = 8))
+
+sel_mag <- c("TARA_ANW_MAG_00087", "TARA_ANW_MAG_00076")
+sel_mag_1 <- gff_genes_comb %>%
+  filter(MAG %in% sel_mag[[1]]) %>% 
+  group_by(MAG, contig, hypo) %>%
+  count() %>%
+  ungroup() %>%
+  group_by(MAG, contig) %>%
+  mutate(N = sum(n), prop = n/N) %>%
+  ungroup() %>%
+  mutate(contig = gsub(paste0(sel_mag[[1]],"_"), "", contig))
+
+sel_mag_1_order <- sel_mag_1 %>% filter(hypo == "non_hypo") %>% arrange((prop)) %>% .$contig %>% unique
+
+sel_mag_1_plot <- ggplot(sel_mag_1 %>% mutate(contig = fct_relevel(contig, c(purrr::discard(sel_mag_1$contig, sel_mag_1$contig %in% sel_mag_1_order), sel_mag_1_order))), 
+                         aes(contig, prop, fill = hypo)) +
+  geom_bar(stat = "identity", alpha = 0.9) +
+  scale_y_continuous(labels = scales::percent, position = "right") +
+  rotate() +
+  theme_light() +
+  ylab("Proportion") +
+  xlab("TARA_ANW_MAG_00087 contigs") +
+  scale_fill_manual(values = c("#103C54", "#EF6C2F"))
+
+sel_mag_2 <- gff_genes_comb %>%
+  filter(MAG %in% sel_mag[[2]]) %>% 
+  group_by(MAG, contig, hypo) %>%
+  count() %>%
+  ungroup() %>%
+  group_by(MAG, contig) %>%
+  mutate(N = sum(n), prop = n/N) %>%
+  ungroup() %>%
+  mutate(contig = gsub(paste0(sel_mag[[2]],"_"), "", contig))
+
+sel_mag_2_order <- sel_mag_2 %>% filter(hypo == "non_hypo") %>% arrange((prop)) %>% .$contig %>% unique
+
+sel_mag_2_plot <- ggplot(sel_mag_2 %>% mutate(contig = fct_relevel(contig, c(purrr::discard(sel_mag_2$contig, sel_mag_2$contig %in% sel_mag_2_order), sel_mag_2_order))), 
+                         aes(contig, prop, fill = hypo)) +
+  geom_bar(stat = "identity", alpha = 0.9) +
+  scale_y_continuous(labels = scales::percent, position = "right") +
+  rotate() +
+  theme_light() +
+  ylab("Proportion") +
+  xlab("TARA_ANW_MAG_00076 contigs") +
+  scale_fill_manual(values = c("#103C54", "#EF6C2F"))
+
+ggarrange(prop_eu_ubiq_p, mag_complet, sel_mag_1_plot, sel_mag_2_plot, nrow = 2, ncol = 2, align = "h", labels = "AUTO", common.legend = TRUE, legend = "bottom")
+
+ggsave("~/Downloads/test_comp.pdf", plot = last_plot())
+
+sel_contig <- c("TARA_ANW_MAG_00087_000000000149", "TARA_ANW_MAG_00076_000000000249")
+
+gff_genes_comb_geno <- gff_genes_comb %>% ungroup() %>% filter(MAG %in% sel_mag) %>%
+  select(contig, product, start, end, strand) %>% 
+  mutate(col = "gray", lty = 1 , lwd = 1 ,pch = 8 , cex = 1, gene_type = "arrows")
+
+colnames(gff_genes_comb_geno)<-c("contig", "name", "start",  "end" ,"strand"  ,"col" ,"lty" ,"lwd" ,"pch" ,"cex", "gene_type")
+```
+
+Plot genomic neighborhood
+```{r}
+library(genoPlotR)
+
+labelS <- 17L
+
+
+df <- list(TARA_ANW_MAG_00087_000000000149 = as.dna_seg(gff_genes_comb_geno %>% filter(contig == sel_contig[[1]]) %>% select(-contig) %>% as.data.frame()),
+           TARA_ANW_MAG_00076000000000249 = as.dna_seg(gff_genes_comb_geno %>% filter(contig == sel_contig[[2]]) %>% select(-contig) %>% as.data.frame()))
+
+annot<-lapply(df,function(x){annot<-annotation(x1=x$start+10,
+                                               x2=x$end-10,
+                                               text=x$name,
+                                               rot=replicate(nrow(x),35));
+annot$text<-paste(substr(x$name,start = 0,stop = labelS),"...")
+annot})
+
+uniqnames<-unique(do.call(rbind.data.frame, df)["name"])
+uniqnames<-sort(uniqnames[,1])
+color <- grDevices::colors()[grep('gr(a|e)y', grDevices::colors(), invert = T)]
+colors<-sample(color, length(uniqnames))
+df2color<-data.frame(as.matrix(uniqnames),as.matrix(colors))
+df2color<-t(df2color)
+colnames(df2color)<-df2color[1,]
+df2color<- df2color[-1,]
+df<-lapply(df,function(x){x["col"]<-"black";x})
+df<-lapply(df,function(x){x["fill"]<-df2color[x$name];x})
+uniqnames<-gsub(pattern = "_",x = as.matrix(uniqnames),replacement = " ")
+uniqnames<-gsub(pattern = "[.]",x = as.matrix(uniqnames),replacement = ",")
+
+plot(c(0,1000), c(0,1000), type="n", axes=FALSE, xlab="", ylab="")
+legend("center", legend = c(as.matrix(uniqnames)),ncol = 1,xpd = NA, cex = 0.8,
+       bty="n",fill=c(as.matrix(colors)),border = c("white"),title = "Genes")
+plot_gene_map(dna_segs = df, dna_seg_label_cex = 0.4, fixed_gap_length = TRUE, annotations = annot, annotation_cex = 0.4)
+
+read_tsv("~/Downloads/eu_cluster_components.tsv", col_names = F) %>% filter(X2 == "17210924" | X2 == "17482518")
 ```
 
